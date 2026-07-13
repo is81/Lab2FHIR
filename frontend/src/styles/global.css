@@ -1,0 +1,340 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --sidebar-width: 220px;
+  --header-height: 60px;
+  --primary: #409eff;
+  --bg-sidebar: #1d1e2c;
+  --bg-page: #f0f2f5;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+#app {
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ===== 布局 ===== */
+.app-layout {
+  display: flex;
+  height: 100vh;
+}
+
+.app-sidebar {
+  width: var(--sidebar-width);
+  background: var(--bg-sidebar);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow-y: auto;
+}
+
+.app-sidebar .logo {
+  height: var(--header-height);
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  gap: 10px;
+}
+
+.app-sidebar .logo img {
+  width: 32px;
+  height: 32px;
+}
+
+.app-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.app-header {
+  height: var(--header-height);
+  background: #fff;
+  border-bottom: 1px solid #e8e8e8;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  flex-shrink: 0;
+}
+
+.app-header h2 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.app-content {
+  flex: 1;
+  overflow-y: auto;
+  background: var(--bg-page);
+  padding: 20px 24px;
+}
+
+/* ===== 侧边栏菜单 ===== */
+.el-menu-vertical {
+  border-right: none !important;
+  background: transparent !important;
+}
+
+.el-menu-vertical .el-menu-item {
+  color: rgba(255,255,255,0.7);
+  font-size: 14px;
+  margin: 4px 8px;
+  border-radius: 8px;
+  height: 44px;
+  line-height: 44px;
+}
+
+.el-menu-vertical .el-menu-item:hover {
+  background: rgba(255,255,255,0.08);
+  color: #fff;
+}
+
+.el-menu-vertical .el-menu-item.is-active {
+  background: var(--primary);
+  color: #fff;
+}
+
+/* ===== 页面级卡片 ===== */
+.page-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+
+.page-card + .page-card {
+  margin-top: 20px;
+}
+
+.page-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #303133;
+  margin-bottom: 20px;
+}
+
+/* ===== 统计卡片 ===== */
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.stat-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px 24px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.stat-card .icon-box {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  color: #fff;
+}
+
+.stat-card .info .number {
+  font-size: 28px;
+  font-weight: 700;
+  color: #303133;
+  line-height: 1.2;
+}
+
+.stat-card .info .label {
+  font-size: 13px;
+  color: #909399;
+}
+
+/* ===== 详情页三栏布局 ===== */
+.detail-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 16px;
+  height: calc(100vh - var(--header-height) - 40px);
+}
+
+/* 收起一个面板 → 剩余两个各占50% */
+.detail-layout.left-hidden { grid-template-columns: 0fr 1fr 1fr; }
+.detail-layout.mid-hidden   { grid-template-columns: 1fr 0fr 1fr; }
+.detail-layout.right-hidden { grid-template-columns: 1fr 1fr 0fr; }
+
+/* 收起两个面板 → 剩余一个占100% */
+.detail-layout.left-hidden.mid-hidden   { grid-template-columns: 0fr 0fr 1fr; }
+.detail-layout.left-hidden.right-hidden { grid-template-columns: 0fr 1fr 0fr; }
+.detail-layout.mid-hidden.right-hidden  { grid-template-columns: 1fr 0fr 0fr; }
+
+.detail-panel {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.detail-panel .panel-header {
+  padding: 12px 20px;
+  border-bottom: 1px solid #f0f0f0;
+  font-weight: 600;
+  font-size: 14px;
+  color: #303133;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.detail-panel .panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 20px;
+}
+
+/* 收起按钮 */
+.panel-collapse-btn {
+  margin-left: auto;
+  cursor: pointer;
+  color: #909399;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+.panel-collapse-btn:hover {
+  color: #409eff;
+  background: #ecf5ff;
+}
+
+/* 收起后的竖条 */
+.collapsed-strip {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  cursor: pointer;
+  min-width: 44px;
+  transition: all 0.2s;
+  user-select: none;
+}
+.collapsed-strip:hover {
+  background: #ecf5ff;
+  box-shadow: 0 2px 8px rgba(64,158,255,0.15);
+}
+.collapsed-label {
+  writing-mode: vertical-rl;
+  font-size: 13px;
+  font-weight: 600;
+  color: #606266;
+  letter-spacing: 2px;
+}
+.collapsed-strip .el-icon {
+  color: #409eff;
+  font-size: 18px;
+}
+
+/* ===== 患者信息标签 ===== */
+.info-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.info-tag {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+}
+
+.info-tag .label {
+  color: #909399;
+}
+
+.info-tag .value {
+  color: #303133;
+  font-weight: 500;
+}
+
+/* ===== 诊断标签 ===== */
+.diagnosis-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.diagnosis-badge.normal { background: #e8f5e9; color: #2e7d32; }
+.diagnosis-badge.abnormal { background: #fce4ec; color: #c62828; }
+.diagnosis-badge.warning { background: #fff3e0; color: #e65100; }
+
+/* ===== 搜索栏 ===== */
+.search-bar {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.search-bar > .el-input { width: 240px; }
+.search-bar .el-select { width: 180px; }
+
+/* ===== PDF 查看器 ===== */
+.pdf-container {
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background: #525659;
+}
+
+.pdf-container canvas {
+  display: block;
+  margin: 0 auto;
+}
+
+/* ===== 响应式 ===== */
+@media (max-width: 1200px) {
+  .detail-layout {
+    grid-template-columns: 1fr;
+  }
+}
