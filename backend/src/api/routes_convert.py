@@ -20,20 +20,6 @@ from ..auth.dependencies import require_role
 _settings = get_settings()
 logger = logging.getLogger("lab2fhir.convert")
 
-# 强制写文件日志（绕过 logging 框架配置）
-_CONVERT_LOG = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-    "lab2fhir.log"
-)
-def _log(msg):
-    line = f"{_dt.datetime.now().isoformat()} [convert] {msg}\n"
-    try:
-        with open(_CONVERT_LOG, "a", encoding="utf-8") as f:
-            f.write(line)
-    except:
-        pass
-    logger.info(msg)
-
 router = APIRouter(tags=["convert"])
 
 UPLOAD_DIR = _settings.UPLOAD_DIR
@@ -56,14 +42,14 @@ async def convert_pdf(
         pass  # 纯英文文件名，无需处理
 
     content = await file.read()
-    _log(f"RECV: {filename} ({len(content)} bytes)")
+    logger.info(f"RECV: {filename} ({len(content)} bytes)")
 
     if not filename or not filename.lower().endswith(".pdf"):
-        _log(f"REJECT: not PDF {filename}")
+        logger.info(f"REJECT: not PDF {filename}")
         return {"success": False, "error": "仅支持PDF文件"}
 
     if len(content) > MAX_FILE_SIZE:
-        _log(f"REJECT: too large {filename} ({len(content)} bytes)")
+        logger.info(f"REJECT: too large {filename} ({len(content)} bytes)")
         return {"success": False, "error": f"文件大小超过{MAX_FILE_SIZE // 1024 // 1024}MB限制"}
 
     safe_name = f"{uuid.uuid4().hex}.pdf"
@@ -75,12 +61,12 @@ async def convert_pdf(
 
         raw_text = extract_text(file_path)
         if not raw_text:
-            _log(f"FAIL: empty text {filename}")
+            logger.info(f"FAIL: empty text {filename}")
             os.remove(file_path)
             return {"success": False, "error": "无法从PDF中提取文本"}
 
         report_type = identify_report_type(raw_text) or identify_report_type(filename)
-        _log(f"TYPE: {report_type} <- {filename}")
+        logger.info(f"TYPE: {report_type} <- {filename}")
 
         patient = parse_patient_info(raw_text)
 
@@ -101,7 +87,7 @@ async def convert_pdf(
             if parser:
                 parsed_data, diagnosis = parser(raw_text)
             else:
-                _log(f"FAIL: no parser {report_type} <- {filename}")
+                logger.info(f"FAIL: no parser {report_type} <- {filename}")
                 parsed_data, diagnosis = {}, ""
 
         fhir_bundle = generate_fhir_bundle(
@@ -125,7 +111,7 @@ async def convert_pdf(
                 Report.pdf_filename == filename
             ).first()
             if existing:
-                _log(f"SKIP: duplicate {pid} ({report_type})")
+                logger.info(f"SKIP: duplicate {pid} ({report_type})")
                 os.remove(file_path)
                 return {
                     "success": False, "skipped": True,
@@ -153,7 +139,7 @@ async def convert_pdf(
             "pdf_path": file_path
         })
 
-        _log(f"OK: {pid} ({report_type}) id={report.id}")
+        logger.info(f"OK: {pid} ({report_type}) id={report.id}")
         return {
             "success": True,
             "report_id": report.id,
@@ -164,7 +150,7 @@ async def convert_pdf(
         }
     except Exception as e:
         import traceback
-        _log(f"ERROR: {filename} | {e}\n{traceback.format_exc()}")
+        logger.info(f"ERROR: {filename} | {e}\n{traceback.format_exc()}")
         if os.path.exists(file_path):
             try:
                 os.remove(file_path)

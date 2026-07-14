@@ -1,0 +1,2 @@
+2026-07-14 18:07:32,632 [lab2fhir] INFO: Lab2FHIR 启动，日志: F:\Lab2FHIR\backend\lab2fhir.log
+2026-07-14 18:07:32,639 [lab2fhir.convert] INFO: TEST: This should appear in the log file
