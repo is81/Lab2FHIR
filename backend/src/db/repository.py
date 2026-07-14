@@ -2,7 +2,8 @@
 import logging
 from sqlalchemy.orm import Session
 from sqlalchemy import func, or_
-from .models import Report, SessionLocal, engine, get_stats_cached, invalidate_stats_cache, TYPE_LABELS
+from .models import Report, SessionLocal, engine, get_stats_cached, invalidate_stats_cache
+from .enums import TYPE_LABELS
 
 logger = logging.getLogger("lab2fhir.repository")
 
@@ -142,7 +143,3 @@ class ReportRepository:
 
     def get_stats(self):
         return get_stats_cached()
-
-    @staticmethod
-    def _type_label(t: str) -> str:
-        return TYPE_LABELS.get(t, t)

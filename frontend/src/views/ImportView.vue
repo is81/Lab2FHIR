@@ -167,7 +167,7 @@
 <script setup>
 import { ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import { uploadPdf } from '../api/index.js'
+import { uploadPdfBatch } from '../api/index.js'
 import { getReportTypeColor, formatFileSize } from '../utils/report.js'
 import axios from 'axios'
 
@@ -211,40 +211,45 @@ async function startImport() {
   const failList = []
   const dbTotalBefore = await fetchDbTotal()
 
-  for (const fileWrapper of fileList.value) {
-    fileWrapper.status = 'parsing'
+  // 标记全部为等待中
+  fileList.value.forEach(fw => { fw.status = 'waiting' })
 
-    const file = fileWrapper.raw
-    if (!file) {
-      fileWrapper.status = 'error'
-      fail++
-      failList.push({ name: fileWrapper.name, reason: '无法读取文件' })
-      completedCount.value++
-      continue
-    }
+  // 3.11 修复：使用并发批处理（API 层控制 3 并发）
+  const rawFiles = fileList.value
+    .map(fw => fw.raw)
+    .filter(Boolean)
 
-    let result
-    try {
-      result = await uploadPdf(file)
-    } catch (e) {
-      result = { success: false, error: e.message }
-    }
+  const batchResult = await uploadPdfBatch(rawFiles, ({ completed, total, file, result }) => {
+    completedCount.value = completed
+    // 找到对应的 fileWrapper 并更新状态
+    const fw = fileList.value.find(f => f.name === file)
+    if (!fw) return
+
     if (result.success) {
-      fileWrapper.status = 'success'
-      fileWrapper.reportType = result.report_type
-      fileWrapper.patientName = result.patient_name
-      typeStats[result.report_type] = (typeStats[result.report_type] || 0) + 1
-      success++
+      fw.status = 'success'
+      fw.reportType = result.report_type
+      fw.patientName = result.patient_name
     } else if (result.skipped) {
-      fileWrapper.status = 'skipped'
-      fileWrapper.reportType = result.report_type
+      fw.status = 'skipped'
+      fw.reportType = result.report_type
+    } else {
+      fw.status = 'error'
+    }
+  })
+
+  // 汇总结果
+  for (const r of batchResult.results) {
+    if (r.success) {
+      success++
+      if (r.report_type) {
+        typeStats[r.report_type] = (typeStats[r.report_type] || 0) + 1
+      }
+    } else if (r.skipped) {
       skipped++
     } else {
-      fileWrapper.status = 'error'
       fail++
-      failList.push({ name: fileWrapper.name, reason: result.error || result.message || '解析失败' })
+      failList.push({ name: r.file, reason: r.error || '解析失败' })
     }
-    completedCount.value++
   }
 
   importing.value = false

@@ -18,8 +18,8 @@ frontend/dist/
 Thumbs.db
 
 # Project
-backend/uploads/*
-!backend/uploads/.gitkeep
+backend/src/uploads/*
+!backend/src/uploads/.gitkeep
 
 # Environment
 .env

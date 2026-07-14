@@ -1,5 +1,9 @@
 <template>
   <div>
+    <!-- 加载错误提示 -->
+    <el-alert v-if="loadError" type="error" :title="loadError" closable @close="loadError = null"
+      style="margin-bottom:16px" />
+
     <!-- 统计卡片 -->
     <div class="stats-row">
       <div class="stat-card" v-for="s in stats" :key="s.label" @click="goFiltered(s.type)">
@@ -61,8 +65,12 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { getStats } from '../api/index.js'
+import { useReportsStore } from '../stores/reports.js'
 
 const router = useRouter()
+const reportsStore = useReportsStore()
+
+const loadError = ref(null)
 
 const stats = ref([
   { label: '报告总数', count: 0, type: null, color: '#409eff', icon: 'Document' },
@@ -83,6 +91,7 @@ const recentReports = ref([])
 const maxTypeCount = computed(() => Math.max(...typeBars.value.map(b => b.count), 1))
 
 function goFiltered(type) {
+  reportsStore.clearSearchCache()
   if (type) {
     router.push({ path: '/reports', query: { type: type } })
   } else {
@@ -91,7 +100,11 @@ function goFiltered(type) {
 }
 
 onMounted(async () => {
-  const data = await getStats()
+  const { data, error } = await reportsStore.fetchStats()
+  if (error) {
+    loadError.value = error
+    return
+  }
   const tc = data.type_counts || {}
   stats.value[0].count = data.total
   stats.value[1].count = tc['细胞学（妇科）'] || 0

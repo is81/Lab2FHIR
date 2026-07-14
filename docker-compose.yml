@@ -1,0 +1,28 @@
+version: "3.8"
+
+services:
+  backend:
+    build: ./backend
+    container_name: lab2fhir-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/lab2fhir.db:/app/lab2fhir.db
+      - ./backend/src/uploads:/app/src/uploads
+      - ./docs/pdf_test:/app/docs/pdf_test:ro
+    environment:
+      - LAB2FHIR_ENV=production
+      - CORS_ORIGINS=http://localhost
+      - LAB2FHIR_LOG_LEVEL=INFO
+      - LAB2FHIR_PDF_TEST_DIR=/app/docs/pdf_test
+      - LAB2FHIR_JWT_SECRET=${LAB2FHIR_JWT_SECRET:-change-me-in-production}
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    container_name: lab2fhir-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped

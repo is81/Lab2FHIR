@@ -39,6 +39,8 @@
 
     <!-- 报告表格 -->
     <div class="page-card" style="margin-top:16px">
+      <el-alert v-if="searchError" type="error" :title="searchError" closable @close="searchError = null"
+        style="margin-bottom:12px" />
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
         <span style="font-weight:600;font-size:15px">
           共 {{ total }} 份报告
@@ -103,24 +105,32 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { getReports } from '../api/index.js'
 import { getReportTypeColor } from '../utils/report.js'
+import { useReportsStore } from '../stores/reports.js'
 
 const router = useRouter()
 const route = useRoute()
+const reportsStore = useReportsStore()
 
-const searchQuery = ref('')
-const filterType = ref('')
+const searchQuery = ref(reportsStore.lastSearchQuery || '')
+const filterType = ref(reportsStore.lastFilterType || '')
 const filterDateRange = ref(null)
-const page = ref(1)
-const pageSize = ref(10)
+const page = ref(reportsStore.lastPage || 1)
+const pageSize = ref(reportsStore.lastPageSize || 10)
 const total = ref(0)
 const reports = ref([])
 const loading = ref(false)
+const searchError = ref(null)
 
 async function doSearch() {
+  // 缓存搜索状态到 Pinia store
+  reportsStore.cacheSearchState(
+    searchQuery.value, filterType.value, page.value, pageSize.value
+  )
+
   // 同步搜索状态到 URL
   const q = {}
   if (searchQuery.value) q.search = searchQuery.value
@@ -129,6 +139,7 @@ async function doSearch() {
   router.replace({ query: q })
 
   loading.value = true
+  searchError.value = null
   const params = {
     search: searchQuery.value,
     report_type: filterType.value,
@@ -139,9 +150,16 @@ async function doSearch() {
     params.date_from = filterDateRange.value[0]
     params.date_to = filterDateRange.value[1]
   }
-  const data = await getReports(params)
-  reports.value = data.items
-  total.value = data.total
+
+  const { data, error } = await getReports(params)
+  if (error) {
+    searchError.value = error
+    reports.value = []
+    total.value = 0
+  } else {
+    reports.value = data.items
+    total.value = data.total
+  }
   loading.value = false
 }
 
@@ -150,11 +168,11 @@ function resetSearch() {
   filterType.value = ''
   filterDateRange.value = null
   page.value = 1
+  reportsStore.clearSearchCache()
   doSearch()
 }
 
 function goDetail(row) {
-  // 携带当前搜索条件跳转，方便返回
   router.push({ path: `/reports/${row.id}`, query: { from: 'list', ...route.query } })
 }
 

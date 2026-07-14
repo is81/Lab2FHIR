@@ -37,7 +37,11 @@
 import { ref, watch, onBeforeUnmount, nextTick } from 'vue'
 import * as pdfjsLib from 'pdfjs-dist'
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.mjs`
+// 5.3 修复：使用本地打包的 worker（无需 CDN，内网可用）
+pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.min.mjs',
+  import.meta.url
+).toString()
 
 const props = defineProps({
   url: { type: String, required: true }

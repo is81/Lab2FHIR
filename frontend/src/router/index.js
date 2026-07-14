@@ -2,6 +2,12 @@ import { createRouter, createWebHistory } from 'vue-router'
 
 const routes = [
   {
+    path: '/login',
+    name: 'Login',
+    component: () => import('../views/LoginView.vue'),
+    meta: { title: '登录', public: true, hideNav: true }
+  },
+  {
     path: '/',
     name: 'Dashboard',
     component: () => import('../views/Dashboard.vue'),
@@ -38,8 +44,22 @@ const router = createRouter({
   routes
 })
 
-// 2.7 修复：路由守卫，验证参数有效性
+// 路由守卫：认证 + 参数校验
 router.beforeEach((to, from, next) => {
+  // 公开页面（登录页）直接放行
+  if (to.meta.public) {
+    next()
+    return
+  }
+
+  // 检查登录状态
+  const token = localStorage.getItem('lab2fhir_token')
+  if (!token) {
+    next('/login')
+    return
+  }
+
+  // 参数校验
   if (to.name === 'ReportDetail') {
     const id = parseInt(to.params.id)
     if (isNaN(id) || id < 1) {

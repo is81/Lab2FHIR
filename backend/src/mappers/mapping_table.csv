@@ -1,0 +1,5 @@
+report_type,loinc_code,loinc_display,description
+细胞学（妇科）,47527-7,Cytology report (gynecologic),妇科细胞学检查（含DNA倍体+TCT液基）
+HPV检测,21440-3,HPV DNA test,人乳头状瘤病毒基因分型检测
+细胞学（非妇科）,47527-7,Cytology report (non-gynecologic),非妇科脱落/穿刺细胞学检查
+常规病理,60568-3,Surgical pathology report,外科病理诊断（含胃镜病理）

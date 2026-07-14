@@ -198,7 +198,8 @@ function kvToArray(obj) {
 
 onMounted(async () => {
   const id = parseInt(route.params.id)
-  report.value = await getReport(id)
+  const { data, error } = await getReport(id)
+  report.value = data
   loading.value = false
 })
 </script>

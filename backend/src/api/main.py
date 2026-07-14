@@ -1,24 +1,22 @@
 """Lab2FHIR FastAPI 应用入口"""
-import os
 import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from ..config import get_settings
 from .routes_reports import router as reports_router
 from .routes_convert import router as convert_router
 from ..db.models import init_db, init_fts
 
-# 日志配置（3.9 修复）
+_settings = get_settings()
+
+# 日志配置
 logging.basicConfig(
-    level=logging.INFO,
+    level=getattr(logging, _settings.LOG_LEVEL),
     format="%(asctime)s [%(name)s] %(levelname)s: %(message)s"
 )
 logger = logging.getLogger("lab2fhir")
-
-# 2.5 修复：环境感知 CORS
-ENV = os.getenv("LAB2FHIR_ENV", "development")
-ALLOWED_ORIGINS = os.getenv("CORS_ORIGINS", "*" if ENV == "development" else "").split(",")
 
 
 # 4.2 修复：使用 lifespan 替代 deprecated on_event
@@ -39,7 +37,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
+    allow_origins=_settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -47,6 +45,9 @@ app.add_middleware(
 
 app.include_router(reports_router, prefix="/api")
 app.include_router(convert_router, prefix="/api")
+
+from .routes_auth import router as auth_router
+app.include_router(auth_router, prefix="/api")
 
 
 # 2.4 修复：全局异常处理

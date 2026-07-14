@@ -1,17 +1,15 @@
 """数据库模型、FTS5 全文索引、Stats 缓存"""
-import os
 import time
 import threading
 import logging
 from sqlalchemy import create_engine, Column, Integer, String, Date, DateTime, Text, JSON, func, event
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
+from ..config import get_settings
 
 logger = logging.getLogger("lab2fhir.db")
 
-# 1.1 修复：使用相对路径，基于当前文件位置
-_BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-_DEFAULT_DB = f"sqlite:///{_BASE_DIR}/lab2fhir.db"
-DATABASE_URL = os.getenv("DATABASE_URL", _DEFAULT_DB)
+_settings = get_settings()
+DATABASE_URL = _settings.DATABASE_URL
 
 engine = create_engine(DATABASE_URL, echo=False, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(bind=engine)
@@ -54,7 +52,22 @@ def _get_db_path() -> str:
 
 
 def init_db():
+    """初始化数据库（优先使用 Alembic 迁移，回退到 create_all）"""
+    try:
+        from alembic.config import Config
+        from alembic import command
+        import os
+        alembic_ini = os.path.join(os.path.dirname(__file__), "..", "..", "alembic.ini")
+        if os.path.exists(alembic_ini):
+            cfg = Config(alembic_ini)
+            command.upgrade(cfg, "head")
+            logger.info("DB migrated via Alembic")
+            return
+    except Exception as e:
+        logger.info(f"Alembic migration skipped, using create_all: {e}")
+    # 回退：直接建表（开发/首次安装）
     Base.metadata.create_all(bind=engine)
+    logger.info("DB created via create_all")
 
 
 def init_fts():
@@ -120,15 +133,12 @@ def _sync_fts(mapper, connection, target):
 
 _stats_cache: dict = {"data": None, "ts": 0.0}
 _stats_lock = threading.Lock()
-STATS_CACHE_TTL = 300  # 5 分钟
+STATS_CACHE_TTL = _settings.STATS_CACHE_TTL
 
-# 4.3 修复：统一标签映射（repository.py 和 fhir/generator.py 引用此处）
-TYPE_LABELS = {
-    "细胞学（妇科）": "细胞学（妇科）",
-    "HPV检测": "HPV检测",
-    "细胞学（非妇科）": "细胞学（非妇科）",
-    "常规病理": "常规病理",
-}
+# 4.3/6.3 修复：统一标签映射 + 报告类型枚举
+from .enums import TYPE_LABELS, ReportType, LOINC_CODES, LOINC_DISPLAYS
+# 确保 User 模型被导入（Alembic 自动发现）
+from .user_models import User  # noqa: F401
 
 
 def get_stats_cached() -> dict:

@@ -1,9 +1,10 @@
-"""PDF 转换 API"""
+"""PDF 转换 API（需 pathology_staff 角色）"""
 import os
 import uuid
 import logging
 from fastapi import APIRouter, UploadFile, File, Depends
 from sqlalchemy.orm import Session
+from ..config import get_settings
 from ..db.models import Report
 from ..db.repository import ReportRepository, get_db, PARSER_REGISTRY
 from ..extractors.base import extract_text, identify_report_type
@@ -13,17 +14,23 @@ from ..parsers.tct_parser import parse_tct
 from ..parsers.gastric_parser import parse_gastric
 from ..parsers.pathology_parser import parse_pathology
 from ..fhir.generator import generate_fhir_bundle
+from ..auth.dependencies import require_role
 
+_settings = get_settings()
 logger = logging.getLogger("lab2fhir.convert")
 router = APIRouter(tags=["convert"])
 
-UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads")
+UPLOAD_DIR = _settings.UPLOAD_DIR
 os.makedirs(UPLOAD_DIR, exist_ok=True)
-MAX_FILE_SIZE = 50 * 1024 * 1024  # 1.2 修复：50MB 上传限制
+MAX_FILE_SIZE = _settings.MAX_FILE_SIZE
 
 
 @router.post("/convert")
-async def convert_pdf(file: UploadFile = File(...), db: Session = Depends(get_db)):
+async def convert_pdf(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user = Depends(require_role(["pathology_staff"]))
+):
     """上传一份PDF，返回FHIR Bundle"""
     # 1.2 修复：文件类型和大小校验
     if not file.filename or not file.filename.lower().endswith(".pdf"):
@@ -140,7 +147,11 @@ async def convert_pdf(file: UploadFile = File(...), db: Session = Depends(get_db
 
 
 @router.post("/convert/batch")
-async def convert_batch(files: list[UploadFile] = File(...), db: Session = Depends(get_db)):
+async def convert_batch(
+    files: list[UploadFile] = File(...),
+    db: Session = Depends(get_db),
+    current_user = Depends(require_role(["pathology_staff"]))
+):
     """批量上传PDF"""
     results = []
     for file in files:

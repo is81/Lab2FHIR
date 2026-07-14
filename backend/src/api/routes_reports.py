@@ -4,14 +4,15 @@ import logging
 from fastapi import APIRouter, Depends, Query, HTTPException
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
+from ..config import get_settings
 from ..db.repository import ReportRepository, get_db, TYPE_LABELS
+from ..auth.dependencies import require_role
 
+_settings = get_settings()
 logger = logging.getLogger("lab2fhir.reports")
 router = APIRouter(tags=["reports"])
 
-# 项目根目录
-_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-PDF_TEST_DIR = os.path.join(_PROJECT_ROOT, "docs", "pdf_test")
+PDF_TEST_DIR = _settings.PDF_TEST_DIR
 _REAL_PDF_TEST_DIR = os.path.realpath(PDF_TEST_DIR)
 
 
@@ -56,7 +57,10 @@ def _find_pdf_by_pid(pathology_id: str) -> str | None:
 
 
 @router.get("/stats")
-def get_stats(db: Session = Depends(get_db)):
+def get_stats(
+    db: Session = Depends(get_db),
+    current_user = Depends(require_role(["pathology_staff", "doctor"]))
+):
     return ReportRepository(db).get_stats()
 
 
@@ -68,7 +72,8 @@ def list_reports(
     date_to: str = Query(None),
     page: int = Query(1, ge=1),
     page_size: int = Query(10, ge=1, le=100),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user = Depends(require_role(["pathology_staff", "doctor"]))
 ):
     repo = ReportRepository(db)
     result = repo.list_reports(search=search, report_type=report_type,
@@ -81,7 +86,11 @@ def list_reports(
 
 
 @router.get("/reports/{report_id}")
-def get_report(report_id: int, db: Session = Depends(get_db)):
+def get_report(
+    report_id: int,
+    db: Session = Depends(get_db),
+    current_user = Depends(require_role(["pathology_staff", "doctor"]))
+):
     repo = ReportRepository(db)
     report = repo.get_report(report_id)
     if not report:
@@ -91,7 +100,11 @@ def get_report(report_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/patients/{patient_name}/reports")
-def get_patient_reports(patient_name: str, db: Session = Depends(get_db)):
+def get_patient_reports(
+    patient_name: str,
+    db: Session = Depends(get_db),
+    current_user = Depends(require_role(["pathology_staff", "doctor"]))
+):
     repo = ReportRepository(db)
     reports = repo.get_patient_reports(patient_name)
     return [_serialize(r) for r in reports]
@@ -101,7 +114,8 @@ def get_patient_reports(patient_name: str, db: Session = Depends(get_db)):
 def get_report_pdf(
     report_id: int,
     pid: str = Query(None),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user = Depends(require_role(["pathology_staff", "doctor"]))
 ):
     """返回报告的原始PDF文件（1.6 修复：路径遍历防护）"""
     repo = ReportRepository(db)
@@ -124,7 +138,10 @@ def get_report_pdf(
 
 
 @router.get("/pdf/{filename:path}")
-def serve_pdf_by_filename(filename: str):
+def serve_pdf_by_filename(
+    filename: str,
+    current_user = Depends(require_role(["pathology_staff", "doctor"]))
+):
     """按文件名提供PDF（1.6 修复：path 参数添加路径遍历防护）"""
     safe = os.path.basename(filename)
     full = os.path.realpath(os.path.join(PDF_TEST_DIR, safe))

@@ -34,7 +34,7 @@ def generate_fhir_bundle(
                     "display": _loinc_display(report_type)
                 }
             ],
-            "text": _report_type_label(report_type)
+            "text": report_type
         },
         "subject": {
             "display": patient_name
@@ -98,27 +98,13 @@ def generate_fhir_bundle(
 
 
 def _loinc_code(report_type: str) -> str:
-    codes = {
-        "细胞学（妇科）": "47527-7",
-        "HPV检测": "21440-3",
-        "细胞学（非妇科）": "47527-7",
-        "常规病理": "60568-3",
-    }
-    return codes.get(report_type, "60568-3")
+    from ..db.enums import LOINC_CODES
+    return LOINC_CODES.get(report_type, "60568-3")
 
 
 def _loinc_display(report_type: str) -> str:
-    names = {
-        "细胞学（妇科）": "Cytology report (gynecologic)",
-        "HPV检测": "HPV DNA test",
-        "细胞学（非妇科）": "Cytology report (non-gynecologic)",
-        "常规病理": "Surgical pathology report",
-    }
-    return names.get(report_type, "Pathology report")
-
-
-def _report_type_label(report_type: str) -> str:
-    return report_type
+    from ..db.enums import LOINC_DISPLAYS
+    return LOINC_DISPLAYS.get(report_type, "Pathology report")
 
 
 def _to_quantity(value) -> dict | None:

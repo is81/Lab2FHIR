@@ -85,7 +85,8 @@ function goBack() {
 
 onMounted(async () => {
   patientName.value = decodeURIComponent(route.params.name)
-  reports.value = await getPatientReports(patientName.value)
+  const { data, error } = await getPatientReports(patientName.value)
+  reports.value = data
   loading.value = false
 })
 </script>
