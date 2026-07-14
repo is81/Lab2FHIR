@@ -2,6 +2,7 @@
 import os
 import uuid
 import logging
+import datetime as _dt
 from fastapi import APIRouter, UploadFile, File, Depends
 from sqlalchemy.orm import Session
 from ..config import get_settings
@@ -18,9 +19,12 @@ from ..auth.dependencies import require_role
 
 _settings = get_settings()
 logger = logging.getLogger("lab2fhir.convert")
-# 强制写文件日志（不依赖 logging 框架配置）
-import datetime as _dt
-_CONVERT_LOG = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "lab2fhir.log")
+
+# 强制写文件日志（绕过 logging 框架配置）
+_CONVERT_LOG = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+    "lab2fhir.log"
+)
 def _log(msg):
     line = f"{_dt.datetime.now().isoformat()} [convert] {msg}\n"
     try:
@@ -29,6 +33,7 @@ def _log(msg):
     except:
         pass
     logger.info(msg)
+
 router = APIRouter(tags=["convert"])
 
 UPLOAD_DIR = _settings.UPLOAD_DIR
@@ -43,19 +48,24 @@ async def convert_pdf(
     current_user = Depends(require_role(["pathology_staff"]))
 ):
     """上传一份PDF，返回FHIR Bundle"""
-    content = await file.read()
-    _log(f"收到文件: {file.filename} ({len(content)} 字节)")
+    # 修复 Windows GBK 编码导致的中文文件名乱码
+    filename = filename or ""
+    try:
+        filename = filename.encode("latin-1").decode("utf-8")
+    except (UnicodeDecodeError, UnicodeEncodeError):
+        pass  # 纯英文文件名，无需处理
 
-    # 1.2 修复：文件类型和大小校验
-    if not file.filename or not file.filename.lower().endswith(".pdf"):
-        _log(f"WARNING: "非PDF文件被拒: {file.filename}")
+    content = await file.read()
+    _log(f"收到: {filename} ({len(content)}字节)")
+
+    if not filename or not filename.lower().endswith(".pdf"):
+        _log(f"拒绝: 非PDF {filename}")
         return {"success": False, "error": "仅支持PDF文件"}
 
     if len(content) > MAX_FILE_SIZE:
-        _log(f"WARNING: "文件过大被拒: {file.filename} ({len(content)} 字节)")
+        _log(f"拒绝: 文件过大 {filename}")
         return {"success": False, "error": f"文件大小超过{MAX_FILE_SIZE // 1024 // 1024}MB限制"}
 
-    # 1.2 修复：使用 UUID 文件名防止路径遍历
     safe_name = f"{uuid.uuid4().hex}.pdf"
     file_path = os.path.join(UPLOAD_DIR, safe_name)
 
@@ -65,17 +75,15 @@ async def convert_pdf(
 
         raw_text = extract_text(file_path)
         if not raw_text:
-            # 1.3 修复：失败时清理文件
-            _log(f"WARNING: "文本提取为空: {file.filename}")
+            _log(f"失败: 文本为空 {filename}")
             os.remove(file_path)
             return {"success": False, "error": "无法从PDF中提取文本"}
 
-        report_type = identify_report_type(raw_text) or identify_report_type(file.filename)
-        _log(f"识别类型: {report_type} (文件: {file.filename})")
+        report_type = identify_report_type(raw_text) or identify_report_type(filename)
+        _log(f"类型: {report_type} <- {filename}")
 
         patient = parse_patient_info(raw_text)
 
-        # 解析器调度
         if report_type == "细胞学（妇科）":
             if "DNA定量" in raw_text or "DNA倍体" in raw_text:
                 parsed_data, diagnosis = parse_dna(raw_text)
@@ -93,7 +101,7 @@ async def convert_pdf(
             if parser:
                 parsed_data, diagnosis = parser(raw_text)
             else:
-                _log(f"WARNING: "无解析器: {report_type} ({file.filename})")
+                _log(f"失败: 无解析器 {report_type} <- {filename}")
                 parsed_data, diagnosis = {}, ""
 
         fhir_bundle = generate_fhir_bundle(
@@ -110,15 +118,14 @@ async def convert_pdf(
         repo = ReportRepository(db)
         pid = patient.get("pathology_id", "")
 
-        # 去重：同一 (病理号, 类型, 文件名) 才跳过（DNA+TCT同pid不同类型需保留）
         if pid:
             existing = db.query(Report).filter(
                 Report.pathology_id == pid,
                 Report.report_type == report_type,
-                Report.pdf_filename == file.filename
+                Report.pdf_filename == filename
             ).first()
             if existing:
-                _log(f"跳过重复: {pid} ({report_type})")
+                _log(f"跳过: 重复 {pid} ({report_type})")
                 os.remove(file_path)
                 return {
                     "success": False, "skipped": True,
@@ -142,11 +149,11 @@ async def convert_pdf(
             "raw_text": raw_text,
             "parsed_data": parsed_data,
             "fhir_bundle": fhir_bundle,
-            "pdf_filename": file.filename,  # 原始文件名仅作为元数据
+            "pdf_filename": filename,
             "pdf_path": file_path
         })
 
-        _log(f"导入成功: {pid} ({report_type}) report_id={report.id}")
+        _log(f"成功: {pid} ({report_type}) id={report.id}")
         return {
             "success": True,
             "report_id": report.id,
@@ -156,8 +163,8 @@ async def convert_pdf(
             "fhir_bundle": fhir_bundle
         }
     except Exception as e:
-        _log(f"ERROR: "Convert failed [{file.filename}]: {e}", exc_info=True)
-        # 1.3 修复：异常时清理临时文件
+        import traceback
+        _log(f"异常: {filename} | {e}\n{traceback.format_exc()}")
         if os.path.exists(file_path):
             try:
                 os.remove(file_path)
@@ -172,13 +179,12 @@ async def convert_batch(
     db: Session = Depends(get_db),
     current_user = Depends(require_role(["pathology_staff"]))
 ):
-    """批量上传PDF"""
     results = []
     for file in files:
         try:
             result = await convert_pdf(file, db)
         except Exception as e:
-            result = {"success": False, "error": str(e), "filename": file.filename}
+            result = {"success": False, "error": str(e), "filename": filename}
         results.append(result)
     success = sum(1 for r in results if r.get("success"))
     return {"total": len(files), "success": success, "fail": len(files) - success, "results": results}
