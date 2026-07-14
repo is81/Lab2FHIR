@@ -47,6 +47,11 @@
           <template v-if="authStore.isAuthenticated">
             <el-tag size="small" type="warning">已登录</el-tag>
             <el-button text size="small" @click="showPwdDialog = true">修改密码</el-button>
+            <el-popconfirm title="确定清空所有数据和文件？此操作不可恢复" @confirm="handleClearAll">
+              <template #reference>
+                <el-button text size="small" type="danger">清空数据</el-button>
+              </template>
+            </el-popconfirm>
             <el-button text size="small" @click="authStore.logout()">退出</el-button>
           </template>
         </div>
@@ -95,6 +100,15 @@ const currentTitle = computed(() => route.meta?.title || 'Lab2FHIR')
 const showPwdDialog = ref(false)
 const pwdLoading = ref(false)
 const pwdForm = reactive({ old: '', new1: '', new2: '' })
+
+async function handleClearAll() {
+  try {
+    await api.delete('/admin/clear')
+    ElMessage.success('数据已清空')
+  } catch (e) {
+    ElMessage.error(e.response?.data?.detail || '操作失败')
+  }
+}
 
 async function handleChangePwd() {
   if (!pwdForm.old) { ElMessage.warning('请输入原密码'); return }

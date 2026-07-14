@@ -174,3 +174,38 @@ async def convert_batch(
         results.append(result)
     success = sum(1 for r in results if r.get("success"))
     return {"total": len(files), "success": success, "fail": len(files) - success, "results": results}
+
+
+@router.delete("/admin/clear")
+def clear_all_data(
+    db: Session = Depends(get_db),
+    current_user = Depends(require_role(["pathology_staff"]))
+):
+    """清空数据库和上传文件（仅管理员）"""
+    import shutil
+
+    # 清空 reports 表
+    deleted_rows = db.query(Report).delete()
+    db.commit()
+    logger.info(f"Admin cleared {deleted_rows} reports from DB")
+
+    # 清空 FTS 索引
+    from sqlalchemy import text
+    db.execute(text("DELETE FROM reports_fts"))
+    db.commit()
+
+    # 清空上传目录
+    upload_count = 0
+    if os.path.isdir(UPLOAD_DIR):
+        for fname in os.listdir(UPLOAD_DIR):
+            if fname.endswith(".pdf"):
+                os.remove(os.path.join(UPLOAD_DIR, fname))
+                upload_count += 1
+            elif fname != ".gitkeep":
+                try:
+                    os.remove(os.path.join(UPLOAD_DIR, fname))
+                except OSError:
+                    pass
+
+    logger.info(f"Admin cleared {upload_count} upload files")
+    return {"success": True, "reports_deleted": deleted_rows, "files_deleted": upload_count}
