@@ -17,8 +17,10 @@ Lab2FHIR automatically converts unstructured lab/pathology PDF reports into the 
 
 - **PDF 自动解析** — 提取患者信息、检测结果、诊断结论，支持 4 大类报告
 - **FHIR R4 输出** — 生成标准 DiagnosticReport + Observation Bundle，含 LOINC 编码
+- **角色权限** — JWT 认证，病理科（导入+查看）/ 医生（仅查看）双角色
 - **Web 操作界面** — 拖拽批量导入、全文搜索、PDF 原文对照查看
-- **轻量部署** — SQLite + FastAPI，无需外部数据库
+- **批量导入** — 并发导入（3 线程），进度条，去重检测，导入报告
+- **轻量部署** — SQLite + FastAPI + Docker Compose，无需外部数据库
 
 ## 支持的报告类型 / Supported Report Types
 
@@ -43,9 +45,20 @@ Lab2FHIR automatically converts unstructured lab/pathology PDF reports into the 
 git clone https://github.com/is81/Lab2FHIR.git
 cd Lab2FHIR
 
+# ====== Docker 部署（推荐） / Docker (Recommended) ======
+docker compose up -d
+# 访问 / Open: http://localhost
+
+# ====== 本地开发 / Local Development ======
+
 # 后端 / Backend
 pip install -r backend/requirements.txt
-python -m uvicorn backend.src.api.main:app --host 0.0.0.0 --port 8000
+python -m uvicorn backend.src.api.main:app --host 0.0.0.0 --port 8000 --reload
+
+# 数据库迁移 / DB Migration
+cd backend
+alembic upgrade head
+python tools/seed_users.py    # 创建默认账户
 
 # 前端（新终端） / Frontend (new terminal)
 cd frontend
@@ -54,6 +67,15 @@ npm run dev
 ```
 
 打开浏览器访问 / Open browser: **http://localhost:5173**
+
+### 默认账户 / Default Accounts
+
+| 用户名 | 密码 | 角色 |
+|--------|------|------|
+| `admin` | `admin123` | 病理科（导入+查看） |
+| `doctor` | `doctor123` | 医生（仅查看） |
+
+> ⚠️ 生产环境请务必修改默认密码。修改方法见 `docs/默认账户.md`。
 
 ### 导入数据 / Import Data
 
@@ -66,14 +88,18 @@ curl -X POST http://localhost:8000/api/convert \
 
 ## API 端点
 
-| 端点 | 方法 | 说明 |
-|------|:--:|------|
-| `/api/convert` | POST | 上传 PDF → 解析 → FHIR Bundle |
-| `/api/reports` | GET | 搜索、筛选、分页查询报告 |
-| `/api/reports/{id}` | GET | 报告详情（含结构化数据 + FHIR JSON） |
-| `/api/reports/{id}/pdf` | GET | 原始 PDF 文件 |
-| `/api/stats` | GET | 统计概览 |
-| `/api/health` | GET | 健康检查 |
+| 端点 | 方法 | 认证 | 说明 |
+|------|:--:|:--:|------|
+| `/api/auth/login` | POST | 公开 | 用户登录，返回 JWT |
+| `/api/auth/me` | GET | 需登录 | 当前用户信息 |
+| `/api/convert` | POST | 病理科 | 上传 PDF → 解析 → FHIR Bundle |
+| `/api/convert/batch` | POST | 病理科 | 批量上传 |
+| `/api/reports` | GET | 需登录 | 搜索、筛选、分页查询报告 |
+| `/api/reports/{id}` | GET | 需登录 | 报告详情（含结构化数据 + FHIR JSON） |
+| `/api/reports/{id}/pdf` | GET | 需登录 | 原始 PDF 文件 |
+| `/api/patients/{name}/reports` | GET | 需登录 | 患者全部报告 |
+| `/api/stats` | GET | 需登录 | 统计概览 |
+| `/api/health` | GET | 公开 | 健康检查 |
 
 完整 API 文档自动生成：http://localhost:8000/docs
 
@@ -87,6 +113,17 @@ curl -X POST http://localhost:8000/api/convert \
 | 前端框架 | Vue 3 + Element Plus |
 | PDF 渲染 | PDF.js |
 | 标准 | HL7 FHIR R4 + LOINC |
+| 认证 | JWT + bcrypt |
+| 测试 | pytest (66 tests) |
+
+## 测试 / Tests
+
+```bash
+cd backend
+pytest tests/ -v
+```
+
+覆盖范围：解析器回归、FHIR Bundle 生成、API 集成、JWT 认证、权限校验。
 
 ## 项目结构 / Project Structure
 
@@ -94,22 +131,35 @@ curl -X POST http://localhost:8000/api/convert \
 Lab2FHIR/
 ├── backend/
 │   ├── requirements.txt
+│   ├── Dockerfile
+│   ├── alembic.ini               # 数据库迁移配置
+│   ├── alembic/                  # 迁移版本
 │   └── src/
-│       ├── api/              # FastAPI 路由
-│       ├── db/               # 数据库模型 + FTS5 全文索引
-│       ├── extractors/       # PDF 文本提取 + 报告类型识别
-│       ├── parsers/          # 各类型报告解析器
-│       └── fhir/             # FHIR R4 Bundle 生成器
+│       ├── config.py             # 集中化配置
+│       ├── api/                  # FastAPI 路由（含 auth）
+│       ├── auth/                 # JWT 认证 + RBAC 依赖
+│       ├── db/                   # 数据模型 + FTS5 + Repository
+│       ├── extractors/           # PDF 文本提取 + 报告类型识别
+│       ├── parsers/              # 6 种报告解析器
+│       ├── fhir/                 # FHIR R4 Bundle 生成
+│       └── mappers/              # LOINC 映射表
 ├── frontend/
+│   ├── Dockerfile
+│   ├── nginx.conf
 │   └── src/
-│       ├── views/            # 5 个页面组件
-│       ├── components/       # 可复用组件（PdfViewer）
-│       └── utils/            # 共享工具函数
+│       ├── views/                # 6 个页面（含登录）
+│       ├── components/           # PdfViewer
+│       ├── stores/               # Pinia 状态管理（auth, reports, app）
+│       ├── api/                  # Axios + JWT 拦截器
+│       └── utils/                # 共享工具函数
 ├── docs/
-│   ├── pdf_test/             # PDF 测试样本
+│   ├── pdf_test/                 # PDF 测试样本
 │   ├── 项目计划.md
-│   └── 代码审查报告.md
-├── LICENSE                   # MIT
+│   ├── 代码审查报告.md
+│   └── 默认账户.md
+├── docker-compose.yml            # 一键部署
+├── .env.example                  # 环境变量模板
+├── LICENSE                       # MIT
 └── README.md
 ```
 
