@@ -54,6 +54,7 @@
             </el-popconfirm>
             <el-button text size="small" @click="authStore.logout()">退出</el-button>
           </template>
+          <el-button v-else size="small" type="primary" @click="$router.push('/login')">登录</el-button>
         </div>
       </header>
       <main class="app-content">

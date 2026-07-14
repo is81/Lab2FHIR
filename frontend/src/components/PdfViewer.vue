@@ -37,11 +37,9 @@
 import { ref, watch, onBeforeUnmount, nextTick } from 'vue'
 import * as pdfjsLib from 'pdfjs-dist'
 
-// 5.3 修复：使用本地打包的 worker（无需 CDN，内网可用）
-pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.mjs',
-  import.meta.url
-).toString()
+// 使用本地打包的 worker（Vite 会自动拷贝到 assets/）
+import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl
 
 const props = defineProps({
   url: { type: String, required: true }

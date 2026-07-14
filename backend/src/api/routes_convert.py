@@ -194,9 +194,12 @@ def clear_all_data(
     deleted_rows = db.query(Report).delete()
     db.commit()
 
-    from sqlalchemy import text
-    db.execute(text("DELETE FROM reports_fts"))
-    db.commit()
+    try:
+        from sqlalchemy import text
+        db.execute(text("DELETE FROM reports_fts"))
+        db.commit()
+    except Exception:
+        pass  # FTS 表可能不存在
 
     upload_count = 0
     if os.path.isdir(UPLOAD_DIR):
