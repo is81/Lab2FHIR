@@ -21,7 +21,7 @@
           <el-icon><DataBoard /></el-icon>
           <span>首页</span>
         </el-menu-item>
-        <el-menu-item v-if="authStore.isPathologyStaff" index="/import">
+        <el-menu-item index="/import">
           <el-icon><Upload /></el-icon>
           <span>导入报告</span>
         </el-menu-item>
@@ -44,14 +44,10 @@
       <header class="app-header">
         <h2>{{ currentTitle }}</h2>
         <div style="display:flex;align-items:center;gap:12px">
-          <el-tag
-            :type="authStore.isPathologyStaff ? 'warning' : 'info'"
-            size="small"
-          >
-            {{ authStore.isPathologyStaff ? '病理科' : '医生' }}
-          </el-tag>
-          <span style="font-size:13px;color:#606266">{{ authStore.displayName }}</span>
-          <el-button text size="small" @click="handleLogout">退出</el-button>
+          <template v-if="authStore.isAuthenticated">
+            <el-tag size="small" type="warning">已登录</el-tag>
+            <el-button text size="small" @click="authStore.logout()">退出</el-button>
+          </template>
         </div>
       </header>
       <main class="app-content">
@@ -63,18 +59,12 @@
 
 <script setup>
 import { computed } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { useAuthStore } from './stores/auth.js'
 
 const route = useRoute()
-const router = useRouter()
 const authStore = useAuthStore()
 
 const activeRoute = computed(() => route.path)
 const currentTitle = computed(() => route.meta?.title || 'Lab2FHIR')
-
-function handleLogout() {
-  authStore.logout()
-  router.push('/login')
-}
 </script>

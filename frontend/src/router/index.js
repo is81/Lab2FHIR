@@ -44,22 +44,8 @@ const router = createRouter({
   routes
 })
 
-// 路由守卫：认证 + 参数校验
+// 路由守卫：仅参数校验（所有页面公开访问）
 router.beforeEach((to, from, next) => {
-  // 公开页面（登录页）直接放行
-  if (to.meta.public) {
-    next()
-    return
-  }
-
-  // 检查登录状态
-  const token = localStorage.getItem('lab2fhir_token')
-  if (!token) {
-    next('/login')
-    return
-  }
-
-  // 参数校验
   if (to.name === 'ReportDetail') {
     const id = parseInt(to.params.id)
     if (isNaN(id) || id < 1) {

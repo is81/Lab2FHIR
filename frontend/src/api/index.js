@@ -15,21 +15,12 @@ api.interceptors.request.use(config => {
   return config
 })
 
-// ====== Response interceptor: 401 跳转登录 + 通用错误提示 ======
+// ====== Response interceptor: 通用错误提示 ======
+// 401 不再强制跳转登录（查询公开，仅导入需登录）
 api.interceptors.response.use(
   response => response,
   error => {
-    // 401 → 清除 token 并跳转登录
-    if (error.response?.status === 401) {
-      localStorage.removeItem('lab2fhir_token')
-      localStorage.removeItem('lab2fhir_user')
-      if (window.location.pathname !== '/login') {
-        window.location.href = '/login'
-      }
-      return Promise.reject(error)
-    }
     const msg = error.response?.data?.detail || error.message || '网络请求失败'
-    // 只在非静默模式下提示（upload/convert 需自行处理错误）
     if (!error.config?._silent) {
       ElMessage.error(msg)
     }

@@ -19,11 +19,4 @@ for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
   app.component(key, component)
 }
 
-// 启动时验证持久化 token 的有效性
-import { useAuthStore } from './stores/auth.js'
-const authStore = useAuthStore()
-if (authStore.isAuthenticated) {
-  authStore.fetchMe()  // 异步验证，失败会自动 logout
-}
-
 app.mount('#app')

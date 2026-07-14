@@ -161,6 +161,46 @@
         </div>
       </div>
     </div>
+
+    <!-- 登录弹窗（未登录时弹出） -->
+    <el-dialog
+      v-model="showLoginDialog"
+      title="管理员登录"
+      width="360px"
+      :close-on-click-modal="false"
+      center
+    >
+      <el-form :model="loginForm" @submit.prevent="handleLogin" size="large">
+        <el-form-item>
+          <el-input
+            v-model="loginForm.username"
+            placeholder="用户名"
+            prefix-icon="User"
+            @keyup.enter="handleLogin"
+          />
+        </el-form-item>
+        <el-form-item>
+          <el-input
+            v-model="loginForm.password"
+            type="password"
+            placeholder="密码"
+            prefix-icon="Lock"
+            show-password
+            @keyup.enter="handleLogin"
+          />
+        </el-form-item>
+        <el-form-item>
+          <el-button
+            type="primary"
+            :loading="loginLoading"
+            @click="handleLogin"
+            style="width:100%"
+          >
+            {{ loginLoading ? '登录中...' : '登录并导入' }}
+          </el-button>
+        </el-form-item>
+      </el-form>
+    </el-dialog>
   </div>
 </template>
 
@@ -169,12 +209,20 @@ import { ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { uploadPdfBatch } from '../api/index.js'
 import { getReportTypeColor, formatFileSize } from '../utils/report.js'
+import { useAuthStore } from '../stores/auth.js'
 import axios from 'axios'
+
+const authStore = useAuthStore()
 
 const fileList = ref([])
 const importing = ref(false)
 const completedCount = ref(0)
 const importReport = ref(null)
+
+// 登录弹窗
+const showLoginDialog = ref(false)
+const loginForm = ref({ username: '', password: '' })
+const loginLoading = ref(false)
 
 const formatSize = formatFileSize
 const tagType = getReportTypeColor
@@ -193,12 +241,35 @@ function resetImport() {
   importReport.value = null
 }
 
+async function handleLogin() {
+  loginLoading.value = true
+  try {
+    await authStore.login(loginForm.value.username, loginForm.value.password)
+    showLoginDialog.value = false
+    loginForm.value = { username: '', password: '' }
+    ElMessage.success('登录成功，开始导入...')
+    // 登录成功后自动执行导入
+    await doImport()
+  } catch (e) {
+    ElMessage.error(e.response?.data?.detail || '登录失败')
+  } finally {
+    loginLoading.value = false
+  }
+}
+
 async function startImport() {
   if (fileList.value.length === 0) {
     ElMessage.warning('请先选择PDF文件')
     return
   }
+  if (!authStore.isAuthenticated) {
+    showLoginDialog.value = true
+    return
+  }
+  await doImport()
+}
 
+async function doImport() {
   importing.value = true
   completedCount.value = 0
   importReport.value = null

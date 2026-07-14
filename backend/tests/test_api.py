@@ -107,9 +107,9 @@ class TestAuthorization:
         assert resp.status_code == 401
 
     def test_unauthenticated_reports(self, public_client):
-        """未登录 GET /reports → 401"""
+        """未登录 GET /reports → 200（查询公开）"""
         resp = public_client.get("/api/reports")
-        assert resp.status_code == 401
+        assert resp.status_code == 200
 
     def test_staff_can_convert(self, auth_client):
         """病理科角色 POST /convert → 200（文件校验先执行）"""
