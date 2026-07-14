@@ -52,7 +52,10 @@ def _get_db_path() -> str:
 
 
 def init_db():
-    """初始化数据库（优先使用 Alembic 迁移，回退到 create_all）"""
+    """初始化数据库（生产环境必须用 Alembic，开发环境允回退 create_all）"""
+    from ..config import get_settings
+    settings = get_settings()
+
     try:
         from alembic.config import Config
         from alembic import command
@@ -64,10 +67,15 @@ def init_db():
             logger.info("DB migrated via Alembic")
             return
     except Exception as e:
-        logger.info(f"Alembic migration skipped, using create_all: {e}")
-    # 回退：直接建表（开发/首次安装）
-    Base.metadata.create_all(bind=engine)
-    logger.info("DB created via create_all")
+        if settings.ENV == "production":
+            logger.critical(f"Alembic migration failed in production: {e}")
+            raise RuntimeError(f"数据库迁移失败，拒绝启动: {e}") from e
+        logger.warning(f"Alembic migration skipped, falling back to create_all: {e}")
+
+    # 仅非生产环境允许回退
+    if settings.ENV != "production":
+        Base.metadata.create_all(bind=engine)
+        logger.info("DB created via create_all (dev fallback)")
 
 
 def init_fts():

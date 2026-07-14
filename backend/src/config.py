@@ -35,10 +35,8 @@ class Settings:
     MAX_FILE_SIZE: int = int(os.getenv("LAB2FHIR_MAX_FILE_SIZE", str(50 * 1024 * 1024)))  # 50MB
 
     # CORS
-    CORS_ORIGINS: list[str] = os.getenv(
-        "CORS_ORIGINS",
-        "*" if ENV == "development" else ""
-    ).split(",")
+    _cors_raw: str = os.getenv("CORS_ORIGINS", "*" if os.getenv("LAB2FHIR_ENV", "development") == "development" else "")
+    CORS_ORIGINS: list[str] = [o.strip() for o in _cors_raw.split(",") if o.strip()]
 
     # Stats 缓存 TTL（秒）
     STATS_CACHE_TTL: int = int(os.getenv("LAB2FHIR_STATS_CACHE_TTL", "300"))
@@ -47,11 +45,19 @@ class Settings:
     LOG_LEVEL: str = os.getenv("LAB2FHIR_LOG_LEVEL", "INFO")
 
     # JWT 认证
-    JWT_SECRET: str = os.getenv(
-        "LAB2FHIR_JWT_SECRET",
-        "lab2fhir-dev-secret-change-in-production"
-    )
+    JWT_SECRET: str = os.getenv("LAB2FHIR_JWT_SECRET", "")
     JWT_EXPIRE_HOURS: int = int(os.getenv("LAB2FHIR_JWT_EXPIRE_HOURS", "48"))
+
+    def __init__(self):
+        if self.ENV == "production" and not self.JWT_SECRET:
+            raise RuntimeError(
+                "LAB2FHIR_JWT_SECRET 环境变量必须设置！\n"
+                "生产环境请使用: export LAB2FHIR_JWT_SECRET=$(openssl rand -hex 32)"
+            )
+        if not self.JWT_SECRET:
+            # 开发环境自动生成临时密钥
+            import secrets
+            self.JWT_SECRET = secrets.token_hex(32)
 
     @property
     def db_path(self) -> str:

@@ -12,10 +12,11 @@ services:
       - ./docs/pdf_test:/app/docs/pdf_test:ro
     environment:
       - LAB2FHIR_ENV=production
-      - CORS_ORIGINS=http://localhost
-      - LAB2FHIR_LOG_LEVEL=INFO
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost}
+      - LAB2FHIR_LOG_LEVEL=${LAB2FHIR_LOG_LEVEL:-INFO}
       - LAB2FHIR_PDF_TEST_DIR=/app/docs/pdf_test
-      - LAB2FHIR_JWT_SECRET=${LAB2FHIR_JWT_SECRET:-change-me-in-production}
+      - LAB2FHIR_JWT_SECRET=${LAB2FHIR_JWT_SECRET:?生产环境必须设置 LAB2FHIR_JWT_SECRET}
+      - LAB2FHIR_ADMIN_PASSWORD=${LAB2FHIR_ADMIN_PASSWORD:-}
     restart: unless-stopped
 
   frontend:

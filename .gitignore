@@ -25,3 +25,7 @@ backend/src/uploads/*
 .env
 .env.local
 docs/pdf_full_backup/
+# Playwright
+frontend/test-results/
+# Claude Code skills (user-local)
+.claude/skills/
