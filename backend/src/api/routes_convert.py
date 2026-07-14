@@ -18,6 +18,17 @@ from ..auth.dependencies import require_role
 
 _settings = get_settings()
 logger = logging.getLogger("lab2fhir.convert")
+# 强制写文件日志（不依赖 logging 框架配置）
+import datetime as _dt
+_CONVERT_LOG = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "lab2fhir.log")
+def _log(msg):
+    line = f"{_dt.datetime.now().isoformat()} [convert] {msg}\n"
+    try:
+        with open(_CONVERT_LOG, "a", encoding="utf-8") as f:
+            f.write(line)
+    except:
+        pass
+    logger.info(msg)
 router = APIRouter(tags=["convert"])
 
 UPLOAD_DIR = _settings.UPLOAD_DIR
@@ -33,15 +44,15 @@ async def convert_pdf(
 ):
     """上传一份PDF，返回FHIR Bundle"""
     content = await file.read()
-    logger.info(f"收到文件: {file.filename} ({len(content)} 字节)")
+    _log(f"收到文件: {file.filename} ({len(content)} 字节)")
 
     # 1.2 修复：文件类型和大小校验
     if not file.filename or not file.filename.lower().endswith(".pdf"):
-        logger.warning(f"非PDF文件被拒: {file.filename}")
+        _log(f"WARNING: "非PDF文件被拒: {file.filename}")
         return {"success": False, "error": "仅支持PDF文件"}
 
     if len(content) > MAX_FILE_SIZE:
-        logger.warning(f"文件过大被拒: {file.filename} ({len(content)} 字节)")
+        _log(f"WARNING: "文件过大被拒: {file.filename} ({len(content)} 字节)")
         return {"success": False, "error": f"文件大小超过{MAX_FILE_SIZE // 1024 // 1024}MB限制"}
 
     # 1.2 修复：使用 UUID 文件名防止路径遍历
@@ -55,12 +66,12 @@ async def convert_pdf(
         raw_text = extract_text(file_path)
         if not raw_text:
             # 1.3 修复：失败时清理文件
-            logger.warning(f"文本提取为空: {file.filename}")
+            _log(f"WARNING: "文本提取为空: {file.filename}")
             os.remove(file_path)
             return {"success": False, "error": "无法从PDF中提取文本"}
 
         report_type = identify_report_type(raw_text) or identify_report_type(file.filename)
-        logger.info(f"识别类型: {report_type} (文件: {file.filename})")
+        _log(f"识别类型: {report_type} (文件: {file.filename})")
 
         patient = parse_patient_info(raw_text)
 
@@ -82,7 +93,7 @@ async def convert_pdf(
             if parser:
                 parsed_data, diagnosis = parser(raw_text)
             else:
-                logger.warning(f"无解析器: {report_type} ({file.filename})")
+                _log(f"WARNING: "无解析器: {report_type} ({file.filename})")
                 parsed_data, diagnosis = {}, ""
 
         fhir_bundle = generate_fhir_bundle(
@@ -107,7 +118,7 @@ async def convert_pdf(
                 Report.pdf_filename == file.filename
             ).first()
             if existing:
-                logger.info(f"跳过重复: {pid} ({report_type})")
+                _log(f"跳过重复: {pid} ({report_type})")
                 os.remove(file_path)
                 return {
                     "success": False, "skipped": True,
@@ -135,7 +146,7 @@ async def convert_pdf(
             "pdf_path": file_path
         })
 
-        logger.info(f"导入成功: {pid} ({report_type}) report_id={report.id}")
+        _log(f"导入成功: {pid} ({report_type}) report_id={report.id}")
         return {
             "success": True,
             "report_id": report.id,
@@ -145,7 +156,7 @@ async def convert_pdf(
             "fhir_bundle": fhir_bundle
         }
     except Exception as e:
-        logger.error(f"Convert failed [{file.filename}]: {e}", exc_info=True)
+        _log(f"ERROR: "Convert failed [{file.filename}]: {e}", exc_info=True)
         # 1.3 修复：异常时清理临时文件
         if os.path.exists(file_path):
             try:
