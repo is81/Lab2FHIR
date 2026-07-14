@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from ..db.repository import get_db
 from ..db.user_models import User
-from ..auth.security import verify_password, create_access_token
+from ..auth.security import verify_password, create_access_token, hash_password
 from ..auth.dependencies import get_current_user
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -47,6 +47,25 @@ def login(body: LoginRequest, db: Session = Depends(get_db)):
             "display_name": user.display_name
         }
     )
+
+
+class ChangePasswordRequest(BaseModel):
+    old_password: str
+    new_password: str
+
+
+@router.put("/password")
+def change_password(
+    body: ChangePasswordRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """修改当前用户密码"""
+    if not verify_password(body.old_password, current_user.password_hash):
+        raise HTTPException(status_code=400, detail="原密码错误")
+    current_user.password_hash = hash_password(body.new_password)
+    db.commit()
+    return {"message": "密码已修改"}
 
 
 @router.get("/me", response_model=UserResponse)
