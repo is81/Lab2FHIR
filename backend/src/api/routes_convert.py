@@ -136,7 +136,7 @@ async def convert_pdf(
             "fhir_bundle": fhir_bundle
         }
     except Exception as e:
-        logger.error(f"Convert failed: {e}")
+        logger.error(f"Convert failed [{file.filename}]: {e}", exc_info=True)
         # 1.3 修复：异常时清理临时文件
         if os.path.exists(file_path):
             try:

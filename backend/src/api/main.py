@@ -1,5 +1,7 @@
 """Lab2FHIR FastAPI 应用入口"""
+import os
 import logging
+from logging.handlers import RotatingFileHandler
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,12 +13,22 @@ from ..db.models import init_db, init_fts
 
 _settings = get_settings()
 
-# 日志配置
+# 日志配置（控制台 + 文件，保留最近 10MB × 3）
+LOG_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+LOG_FILE = os.path.join(LOG_DIR, "lab2fhir.log")
+
+file_handler = RotatingFileHandler(LOG_FILE, maxBytes=10 * 1024 * 1024, backupCount=3, encoding="utf-8")
+file_handler.setFormatter(logging.Formatter("%(asctime)s [%(name)s] %(levelname)s: %(message)s"))
+
+console_handler = logging.StreamHandler()
+console_handler.setFormatter(logging.Formatter("%(asctime)s [%(name)s] %(levelname)s: %(message)s"))
+
 logging.basicConfig(
     level=getattr(logging, _settings.LOG_LEVEL),
-    format="%(asctime)s [%(name)s] %(levelname)s: %(message)s"
+    handlers=[console_handler, file_handler]
 )
 logger = logging.getLogger("lab2fhir")
+logger.info(f"日志文件: {LOG_FILE}")
 
 
 # 4.2 修复：使用 lifespan 替代 deprecated on_event
