@@ -7,14 +7,15 @@
   <!-- 主应用：侧边栏 + Header + 内容 -->
   <div v-else class="app-layout">
     <!-- 侧边栏 -->
-    <aside class="app-sidebar">
+    <aside class="app-sidebar" :class="{ collapsed }">
       <div class="logo">
         <el-icon :size="24"><FirstAidKit /></el-icon>
-        <span>Lab2FHIR</span>
+        <span v-if="!collapsed">Lab2FHIR</span>
       </div>
       <el-menu
         :default-active="activeRoute"
         class="el-menu-vertical"
+        :collapse="collapsed"
         router
       >
         <el-menu-item index="/">
@@ -32,9 +33,13 @@
       </el-menu>
 
       <div style="margin-top:auto;padding:16px;border-top:1px solid rgba(255,255,255,0.08)">
-        <div style="font-size:12px;color:rgba(255,255,255,0.4);line-height:1.8">
+        <div v-if="!collapsed" style="font-size:12px;color:rgba(255,255,255,0.4);line-height:1.8">
           Lab2FHIR v1.0<br/>
           化验单 → FHIR R4
+        </div>
+        <div class="collapse-btn" @click="collapsed = !collapsed" :title="collapsed ? '展开菜单' : '收起菜单'">
+          <el-icon :size="16"><Fold v-if="!collapsed"/><Expand v-else/></el-icon>
+          <span class="collapse-text">{{ collapsed ? '展' : '收起' }}</span>
         </div>
       </div>
     </aside>
@@ -93,6 +98,7 @@ import api from './api/index.js'
 
 const route = useRoute()
 const authStore = useAuthStore()
+const collapsed = ref(false)
 
 const activeRoute = computed(() => route.path)
 const currentTitle = computed(() => route.meta?.title || 'Lab2FHIR')
@@ -128,3 +134,46 @@ async function handleChangePwd() {
   }
 }
 </script>
+
+<style scoped>
+.app-sidebar.collapsed {
+  width: 64px;
+}
+
+.app-sidebar.collapsed .logo {
+  padding: 16px 0;
+  justify-content: center;
+}
+
+.app-sidebar.collapsed :deep(.el-menu-item) {
+  margin: 4px 0 !important;
+  padding: 0 !important;
+  justify-content: center;
+}
+
+.collapse-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px;
+  color: rgba(255,255,255,0.35);
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.2s;
+  font-size: 12px;
+}
+
+.collapse-btn:hover {
+  color: rgba(255,255,255,0.8);
+  background: rgba(255,255,255,0.08);
+}
+
+.collapse-text {
+  display: none;
+}
+
+.collapse-btn:hover .collapse-text {
+  display: inline;
+}
+</style>
