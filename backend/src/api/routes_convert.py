@@ -18,7 +18,7 @@ from ..fhir.generator import generate_fhir_bundle
 from ..auth.dependencies import require_role
 
 _settings = get_settings()
-logger = logging.getLogger("lab2fhir.convert")
+logger = logging.getLogger("lab2fhir")
 
 router = APIRouter(tags=["convert"])
 
@@ -34,6 +34,11 @@ async def convert_pdf(
     current_user = Depends(require_role(["pathology_staff"]))
 ):
     """上传一份PDF，返回FHIR Bundle"""
+    # 临时验证：无论如何都写一行到日志文件
+    with open(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "lab2fhir.log"), "a", encoding="utf-8") as _f:
+        import datetime
+        _f.write(f"{datetime.datetime.now().isoformat()} [HIT] convert called\n")
+
     # 修复 Windows GBK 编码导致的中文文件名乱码
     filename = filename or ""
     try:
