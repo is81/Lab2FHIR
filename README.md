@@ -24,12 +24,12 @@ Lab2FHIR automatically converts unstructured lab/pathology PDF reports into the 
 
 ## 支持的报告类型 / Supported Report Types
 
-| 类型 / Type | 说明 / Description | 示例数量 |
+| 类型 / Type | 说明 / Description | 仓库示例 |
 |------|------|:--:|
-| 细胞学（妇科） | DNA 倍体 + TCT 液基细胞学 | 142 |
-| HPV检测 | 人乳头状瘤病毒基因分型 | 79 |
-| 细胞学（非妇科） | 穿刺/脱落细胞学检查 | 13 |
-| 常规病理 | 胃镜病理 + 外科病理诊断 | 170 |
+| 细胞学（妇科） | DNA 倍体 + TCT 液基细胞学 | 2 |
+| HPV检测 | 人乳头状瘤病毒基因分型 | 1 |
+| 细胞学（非妇科） | 穿刺/脱落细胞学检查 | 1 |
+| 常规病理 | 胃镜病理 + 外科病理诊断 | 2 |
 
 ## 快速开始 / Quick Start
 
