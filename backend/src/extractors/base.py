@@ -60,6 +60,10 @@ def identify_report_type(text: str) -> str | None:
     if "病理诊断" in text and "报告单" in text:
         return "常规病理"
 
+    # 免疫组化补充报告（R-series，无标题行，开头即 Signed*-Report）
+    if "Signed*-Report" in text and ("免疫组化" in text or "检测结果" in text):
+        return "常规病理"
+
     return None
 
 

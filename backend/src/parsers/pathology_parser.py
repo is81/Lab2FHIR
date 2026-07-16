@@ -61,6 +61,18 @@ def parse_pathology(text: str) -> tuple[dict, str]:
         if parts:
             diagnosis = "\n".join(parts)
 
+    # 策略1b：IHC免疫组化补充报告 → 提取检测结果
+    if not diagnosis and data.get("免疫组化结果") or (
+        not diagnosis and "免疫组化" in text and "检测结果" in text):
+        # 提取 "检测结果：" 或 "免疫组化结果：" 之后到 "备注" 之前的内容
+        m = re.search(r'(?:检测|免疫组化)结果[：:]\s*\n?(.+?)(?=\n\s*(?:备注|Signed|诊断医师|注：))', text, re.DOTALL)
+        if m:
+            ihc_text = m.group(1).strip()
+            # 清理：每行一条 IHC 指标
+            lines = [l.strip() for l in ihc_text.split('\n') if l.strip() and len(l.strip()) > 5]
+            if lines:
+                diagnosis = '\n'.join(lines)
+
     # 策略2：短篇报告 → 提取带引号的部位诊断
     if not diagnosis:
         diagnoses = []

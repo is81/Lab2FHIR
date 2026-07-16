@@ -89,8 +89,13 @@ async def convert_pdf(
         elif report_type == "常规病理":
             if "H.P." in raw_text and "上皮内瘤变" in raw_text:
                 parsed_data, diagnosis = parse_gastric(raw_text)
+                # 胃镜关键词可能出现在大肠癌等长篇报告中，回退到病理诊断解析器
+                if not diagnosis:
+                    parsed_data, diagnosis = parse_pathology(raw_text)
             elif "慢性炎症" in raw_text and "活动性" in raw_text:
                 parsed_data, diagnosis = parse_gastric(raw_text)
+                if not diagnosis:
+                    parsed_data, diagnosis = parse_pathology(raw_text)
             else:
                 parsed_data, diagnosis = parse_pathology(raw_text)
         else:
