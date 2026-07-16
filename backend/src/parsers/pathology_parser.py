@@ -43,6 +43,12 @@ def parse_pathology(text: str) -> tuple[dict, str]:
     if margins:
         data["切缘"] = margins
 
+    # Unicode 引号常量
+    lq = '“'  # "
+    rq = '”'  # "
+    lb = '「'  # 「
+    rb = '」'  # 」
+
     # ===== 诊断结论 =====
     diagnosis = ""
 
@@ -58,27 +64,43 @@ def parse_pathology(text: str) -> tuple[dict, str]:
     # 策略2：短篇报告 → 提取带引号的部位诊断
     if not diagnosis:
         diagnoses = []
-        # 匹配 ASCII 直引号 "、"、Unicode 弯引号 “”、中文引号 「」
-        for pat in [r'[“\"]([^”\"]+)[”\"]\s*([^“「\n]+)',
-                     r'「([^」]+)」\s*([^「\n]+)']:
-            matches = re.findall(pat, text)
-            for site, desc in matches:
-                # 过滤取材描述（含尺寸、颜色、切缘等测量描述的行）
-                skip_kw = ['福尔马林', '送检为', '包装外附', '全取',
-                          '灰白', '灰红', '灰褐', '灰黄', '覆皮',
-                          '大小', '直径', '切缘', '涂墨', '系线',
-                          'cm', '×', '保留', '切面']
-                if any(kw in site + desc for kw in skip_kw):
+        for pat in [f'[{lq}\\"]([^{rq}\\"]+)[{rq}\\]"]\\s*([^{lq}{lb}\\n]+)',
+                     f'{lb}([^{rb}]+){rb}\\s*([^{lb}\\n]+)']:
+            for m in re.finditer(pat, text):
+                site = m.group(1)
+                desc = m.group(2)
+                # 取材描述以 ：开头（如 "部位"：灰白组织），诊断则直接跟文本
+                if desc.strip().startswith('：') or desc.strip().startswith(':'):
                     continue
-                diagnoses.append(f"“{site}”{desc}")
+                # 处理跨行续行：诊断可能被换行截断，合并下一行
+                end_pos = m.end()
+                remaining = text[end_pos:]
+                next_lines = remaining.split('\n')
+                for nl in next_lines:
+                    nl = nl.strip()
+                    if not nl:
+                        continue
+                    # 续行终止条件：新部位、新章节
+                    if any(nl.startswith(c) for c in [lq, rq, lb]):
+                        break
+                    if any(kw in nl for kw in ['备注', 'Signed', '诊断医师',
+                                                  '审核医师', '免疫组化', '接收时间']):
+                        break
+                    if nl.startswith('：') or nl.startswith(':'):
+                        break
+                    # 取材描述续行（以数字+cm/× 开头）
+                    if nl[0].isdigit() and ('cm' in nl or '×' in nl):
+                        break
+                    desc += nl
+                diagnoses.append(f'{lq}{site}{rq}{desc}')
         if diagnoses:
             diagnosis = "\n".join(diagnoses)
 
     # 策略3：兜底 — 提取"备注"或"Signed*-Report"之前的非元数据行
     if not diagnosis:
         lines = text.split('\n')
-        # 找到第一个诊断行（在"临床病史"之后，"备注"之前）
         capture = False
+        in_specimen = False  # 追踪是否在取材描述区域内
         diag_lines = []
         for line in lines:
             line = line.strip()
@@ -91,9 +113,22 @@ def parse_pathology(text: str) -> tuple[dict, str]:
                 continue
             if any(kw in line for kw in ['备注', 'Signed*-Report', '诊断医师', '审核医师', '接收时间']):
                 break
-            # 跳过元数据行
+            # 跳过取材描述行
             if any(kw in line for kw in ['送检为', '福尔马林', '包装外附', '术式:', '标本长度', '肿瘤距']):
+                in_specimen = True
                 continue
+            # 取材描述续行：以数字+cm/× 或颜色描述开头
+            if in_specimen:
+                if (line[0].isdigit() and ('cm' in line or '×' in line)) or \
+                   any(line.startswith(w) for w in ['灰白', '灰红', '灰黄', '灰褐', '涂', '切面', '全取']):
+                    continue
+                in_specimen = False
+            # 取材描述行（"部位"：...）vs 诊断行（"部位"直接诊断）
+            if line.startswith(lq) or line.startswith('"') or line.startswith(lb):
+                m = re.match(f'[{lq}\\"{lb}]([^{rq}\\"{rb}]+)[{rq}\\"{rb}]\\s*[：:]', line)
+                if m:
+                    in_specimen = True
+                    continue
             if line and len(line) > 5:
                 diag_lines.append(line)
         if diag_lines:

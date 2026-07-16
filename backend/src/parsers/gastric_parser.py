@@ -28,20 +28,27 @@ def parse_gastric(text: str) -> tuple[dict, str]:
 
     # 诊断结论：评分表后的带引号诊断行
     diagnosis = ""
-    # 匹配 "部位"诊断文本。 格式
+    # 匹配 "部位"诊断文本 或 "部位"诊断文本 格式（兼容弯引号+直引号）
+    lq = '“'  # "
+    rq = '”'  # "
+    lb = '「'  # 「
+    rb = '」'  # 」
+    dq = '"'       # ASCII 直引号
+
     for pat in [
-        r'[“”]([^””]+)[“”]\s*([^”「\n]+)',
-        r'「([^」]+)」\s*([^「\n]+)',
+        f'[{lq}{dq}]([^{rq}{dq}]+)[{rq}{dq}]\\s*([^{lq}{dq}{lb}\\n]+)',
+        f'{lb}([^{rb}]+){rb}\\s*([^{lb}\\n]+)',
     ]:
-        matches = re.findall(pat, text)
+        matches = list(re.finditer(pat, text))
         if matches:
             diagnoses = []
-            for site, desc in matches:
-                # 过滤掉非诊断内容（如取材描述、标本类型等）
-                if any(kw in site + desc for kw in ['福尔马林', '送检为', '包装外附',
-                    '全取', '灰白', '灰红', '大小', '直径', '切缘', '涂墨', '系线', 'cm']):
+            for m in matches:
+                site = m.group(1)
+                desc = m.group(2)
+                # 取材描述以 ：开头，诊断则直接跟文本
+                if desc.strip().startswith('：') or desc.strip().startswith(':'):
                     continue
-                diagnoses.append(f"“{site}”{desc}")
+                diagnoses.append(f'{lq}{site}{rq}{desc}')
             if diagnoses:
                 diagnosis = "\n".join(diagnoses)
                 break
@@ -60,6 +67,6 @@ def parse_gastric(text: str) -> tuple[dict, str]:
                 break
 
     # 清理诊断中的引号
-    diagnosis = diagnosis.strip().strip('"').strip('"').strip()
+    diagnosis = diagnosis.strip().strip('"').strip(lq).strip(rq).strip()
 
     return data, diagnosis

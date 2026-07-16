@@ -3,9 +3,11 @@ import os
 import logging
 from fastapi import APIRouter, Depends, Query, HTTPException
 from fastapi.responses import FileResponse
+from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
 from ..config import get_settings
 from ..db.repository import ReportRepository, get_db, TYPE_LABELS
+from ..auth.dependencies import require_role
 
 _settings = get_settings()
 logger = logging.getLogger("lab2fhir.reports")
@@ -58,6 +60,31 @@ def _find_pdf_by_pid(pathology_id: str) -> str | None:
 @router.get("/stats")
 def get_stats(db: Session = Depends(get_db)):
     return ReportRepository(db).get_stats()
+
+
+class DeleteRequest(BaseModel):
+    ids: list[int]
+
+    @field_validator("ids")
+    @classmethod
+    def check_ids(cls, v):
+        if not v or len(v) < 1:
+            raise ValueError("至少选择一个报告")
+        if len(v) > 200:
+            raise ValueError("一次最多删除 200 条")
+        return v
+
+
+@router.delete("/reports")
+def delete_reports(
+    req: DeleteRequest,
+    db: Session = Depends(get_db),
+    current_user = Depends(require_role(["pathology_staff"]))
+):
+    """批量删除报告（仅病理科管理员）"""
+    repo = ReportRepository(db)
+    deleted = repo.delete_reports(req.ids)
+    return {"success": True, "deleted": deleted}
 
 
 @router.get("/reports")

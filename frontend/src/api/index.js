@@ -120,6 +120,16 @@ export async function getPatientReports(name) {
   }
 }
 
+// 批量删除报告
+export async function deleteReports(ids) {
+  try {
+    const { data } = await api.delete('/reports', { data: { ids } })
+    return { data, error: null }
+  } catch (e) {
+    return { data: null, error: e.response?.data?.detail || e.message }
+  }
+}
+
 // 搜索报告（快捷方法）
 export async function searchReports(keyword, options = {}) {
   return getReports({ ...options, search: keyword })

@@ -45,9 +45,24 @@
         <span style="font-weight:600;font-size:15px">
           共 {{ total }} 份报告
         </span>
-        <el-button type="primary" size="small" @click="$router.push('/import')" :icon="Upload">
-          导入新报告
-        </el-button>
+        <div style="display:flex;gap:8px">
+          <el-popconfirm
+            v-if="authStore.isPathologyStaff && selectedRows.length"
+            :title="`确定删除选中的 ${selectedRows.length} 份报告？`"
+            confirm-button-text="删除"
+            cancel-button-text="取消"
+            @confirm="deleteSelected"
+          >
+            <template #reference>
+              <el-button type="danger" size="small" :loading="deleting">
+                删除选中 ({{ selectedRows.length }})
+              </el-button>
+            </template>
+          </el-popconfirm>
+          <el-button type="primary" size="small" @click="$router.push('/import')" :icon="Upload">
+            导入新报告
+          </el-button>
+        </div>
       </div>
 
       <el-table
@@ -55,10 +70,12 @@
         stripe
         style="width:100%"
         @row-click="goDetail"
+        @selection-change="handleSelectionChange"
         :row-style="{cursor:'pointer'}"
         v-loading="loading"
         max-height="calc(100vh - 360px)"
       >
+        <el-table-column v-if="authStore.isPathologyStaff" type="selection" width="45" />
         <el-table-column prop="pathology_id" label="病理号" width="110" />
         <el-table-column prop="patient_name" label="患者姓名" width="100" />
         <el-table-column prop="gender" label="性别" width="60" />
@@ -105,15 +122,18 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { getReports } from '../api/index.js'
+import { ElMessage } from 'element-plus'
+import { getReports, deleteReports } from '../api/index.js'
 import { getReportTypeColor } from '../utils/report.js'
 import { useReportsStore } from '../stores/reports.js'
+import { useAuthStore } from '../stores/auth.js'
 
 const router = useRouter()
 const route = useRoute()
 const reportsStore = useReportsStore()
+const authStore = useAuthStore()
 
 const searchQuery = ref(reportsStore.lastSearchQuery || '')
 const filterType = ref(reportsStore.lastFilterType || '')
@@ -124,6 +144,8 @@ const total = ref(0)
 const reports = ref([])
 const loading = ref(false)
 const searchError = ref(null)
+const selectedRows = ref([])
+const deleting = ref(false)
 
 async function doSearch() {
   // 缓存搜索状态到 Pinia store
@@ -179,6 +201,25 @@ function goDetail(row) {
 function goPatient(row) {
   router.push({ path: `/patients/${encodeURIComponent(row.patient_name)}`, query: { from: 'list', ...route.query } })
 }
+
+function handleSelectionChange(rows) {
+  selectedRows.value = rows
+}
+
+async function deleteSelected() {
+  deleting.value = true
+  const ids = selectedRows.value.map(r => r.id)
+  const { data, error } = await deleteReports(ids)
+  if (!error) {
+    ElMessage.success(`已删除 ${data.deleted} 份报告`)
+    selectedRows.value = []
+    doSearch()
+  }
+  deleting.value = false
+}
+
+watch(page, () => { selectedRows.value = [] })
+watch(pageSize, () => { selectedRows.value = [] })
 
 // 从 URL 恢复搜索状态
 function restoreFromUrl() {

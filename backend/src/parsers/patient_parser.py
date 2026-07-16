@@ -55,9 +55,16 @@ def parse_patient_info(text: str) -> dict:
     m = re.search(r'送检科室[：:]\s*(.+?)(?:\s{2,}|\n|$)', text)
     if m:
         dept = m.group(1).strip()
-        for sep in ['送检医生', '送检医院', '标本类型', '患者电话', '门诊号', '床号', '样本条码']:
-            idx = dept.find(sep)
-            if idx > 0: dept = dept[:idx].strip()
+        # 如果捕获值以其他字段标签开头，说明科室为空
+        field_labels = ['送检医生', '送检医院', '标本类型', '患者电话', '门诊号', '床号', '样本条码']
+        if dept and any(dept.startswith(sep) for sep in field_labels):
+            dept = ''
+        else:
+            for sep in field_labels:
+                idx = dept.find(sep)
+                if idx > 0:
+                    dept = dept[:idx].strip()
+                    break
         info["department"] = dept
 
     # 送检医生（容错截断）

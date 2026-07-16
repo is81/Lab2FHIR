@@ -141,5 +141,12 @@ class ReportRepository:
         invalidate_stats_cache()
         return report
 
+    def delete_reports(self, ids: list[int]) -> int:
+        """批量删除报告，返回实际删除行数"""
+        deleted = self.db.query(Report).filter(Report.id.in_(ids)).delete(synchronize_session='fetch')
+        self.db.commit()
+        invalidate_stats_cache()
+        return deleted
+
     def get_stats(self):
         return get_stats_cached()
