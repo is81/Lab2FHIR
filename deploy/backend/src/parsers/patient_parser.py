@@ -13,25 +13,24 @@ def parse_patient_info(text: str) -> dict:
     if m:
         info["pathology_id"] = m.group(1)
 
-    # 姓名（2.3 修复：允许空格；容错：截断到下一个字段标签之前）
-    m = re.search(r'姓名[：:]\s*(.+?)(?:\s{2,}|\n|$)', text)
+    # 姓名（兼容 IHC 格式 "姓 名：" 含空格）
+    m = re.search(r'姓\s*名[：:]\s*(.+?)(?:\s{2,}|\n|$)', text)
     if m:
         name = m.group(1).strip()
-        # 脱敏/OCR可能导致后续字段连在一起，截断到第一个已知字段标签
-        for sep in ['性别', '年龄', '出生日期', '样本条码', '送检', '门诊号', '床号']:
+        for sep in ['性别', '年龄', '出生日期', '样本条码', '送检', '门诊号', '床号', '性 别']:
             idx = name.find(sep)
             if idx > 0:
                 name = name[:idx].strip()
                 break
         info["patient_name"] = name
 
-    # 性别
-    m = re.search(r'性别[：:]\s*(男|女)', text)
+    # 性别（兼容 IHC 格式 "性 别：" 含空格）
+    m = re.search(r'性\s*别[：:]\s*(男|女)', text)
     if m:
         info["gender"] = m.group(1)
 
-    # 年龄
-    m = re.search(r'年龄[：:]\s*(\d+)', text)
+    # 年龄（兼容 IHC 格式 "年 龄：" 含空格）
+    m = re.search(r'年\s*龄[：:]\s*(\d+)', text)
     if m:
         try:
             info["age"] = int(m.group(1))
@@ -42,7 +41,7 @@ def parse_patient_info(text: str) -> dict:
     m = re.search(r'送检(?:单位|医院)[：:]\s*(.+?)(?:\s{2,}|\n|$)', text)
     if m:
         hosp = m.group(1).strip()
-        for sep in ['送检科室', '送检医生', '标本类型', '患者电话', '门诊号', '床号', '样本条码']:
+        for sep in ['送检科室', '送检科别', '送检医生', '送检医师', '标本类型', '患者电话', '门诊号', '床号', '样本条码', '病理号']:
             idx = hosp.find(sep)
             if idx > 0: hosp = hosp[:idx].strip()
         info["hospital"] = hosp
@@ -51,12 +50,12 @@ def parse_patient_info(text: str) -> dict:
         if m:
             info["hospital"] = m.group(0)
 
-    # 送检科室（容错截断）
-    m = re.search(r'送检科室[：:]\s*(.+?)(?:\s{2,}|\n|$)', text)
+    # 送检科室（兼容 IHC 格式 "送检科别："）
+    m = re.search(r'送检(?:科室|科别)[：:]\s*(.+?)(?:\s{2,}|\n|$)', text)
     if m:
         dept = m.group(1).strip()
-        # 如果捕获值以其他字段标签开头，说明科室为空
-        field_labels = ['送检医生', '送检医院', '标本类型', '患者电话', '门诊号', '床号', '样本条码']
+        field_labels = ['送检医生', '送检医师', '送检医院', '标本类型', '患者电话',
+                        '门诊号', '门 诊 号', '床号', '床 号', '住院号', '住 院 号', '样本条码']
         if dept and any(dept.startswith(sep) for sep in field_labels):
             dept = ''
         else:
@@ -67,11 +66,12 @@ def parse_patient_info(text: str) -> dict:
                     break
         info["department"] = dept
 
-    # 送检医生（容错截断）
-    m = re.search(r'送检医生[：:]\s*(.+?)(?:\s{2,}|\n|$)', text)
+    # 送检医生（兼容 IHC 格式 "送检医师："）
+    m = re.search(r'送检(?:医生|医师)[：:]\s*(.+?)(?:\s{2,}|\n|$)', text)
     if m:
         doc = m.group(1).strip()
-        for sep in ['标本类型', '门诊号', '住院号', '床号', '患者电话', '样本条码', '送检医院']:
+        for sep in ['标本类型', '门诊号', '住院号', '床号', '床 号', '患者电话',
+                     '样本条码', '送检医院', '送检日期', '离体时间']:
             idx = doc.find(sep)
             if idx > 0: doc = doc[:idx].strip()
         info["doctor"] = doc
