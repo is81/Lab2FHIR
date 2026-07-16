@@ -27,6 +27,4 @@ backend/src/uploads/*
 docs/pdf_full_backup/
 # Playwright
 frontend/test-results/
-# Claude Code skills (user-local)
-.claude/skills/
 deploy/Lab2FHIR/
