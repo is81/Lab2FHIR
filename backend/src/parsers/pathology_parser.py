@@ -69,9 +69,10 @@ def parse_pathology(text: str) -> tuple[dict, str]:
             for m in re.finditer(pat, text):
                 site = m.group(1)
                 desc = m.group(2)
-                # 取材描述以 ：开头（如 "部位"：灰白组织），诊断则直接跟文本
+                # 取材描述以 ：开头且含测量/颜色词 → 过滤；不含则可能是诊断
                 if desc.strip().startswith('：') or desc.strip().startswith(':'):
-                    continue
+                    if any(kw in desc for kw in ['×', 'cm', '大小', '直径', '灰白', '灰红', '灰黄', '灰褐']):
+                        continue
                 # 处理跨行续行：诊断可能被换行截断，合并下一行
                 end_pos = m.end()
                 remaining = text[end_pos:]
@@ -96,15 +97,19 @@ def parse_pathology(text: str) -> tuple[dict, str]:
         if diagnoses:
             diagnosis = "\n".join(diagnoses)
 
-    # 策略1b：IHC免疫组化补充报告 → 仅在无引号部位诊断时提取
-    if not diagnosis and "免疫组化" in text and (
-        data.get("免疫组化结果") or "检测结果" in text):
+    # 策略1b：IHC免疫组化补充报告 → IHC结果独立或追加到部位诊断
+    if "免疫组化" in text and (data.get("免疫组化结果") or "检测结果" in text):
         m = re.search(r'(?:检测|免疫组化)结果[：:]\s*\n?(.+?)(?=\n\s*(?:备注|Signed|诊断医师|注：))', text, re.DOTALL)
         if m:
             ihc_text = m.group(1).strip()
             lines = [l.strip() for l in ihc_text.split('\n') if l.strip() and len(l.strip()) > 5]
             if lines:
-                diagnosis = '\n'.join(lines)
+                ihc_diag = '\n'.join(lines)
+                if not diagnosis:
+                    diagnosis = ihc_diag
+                elif '补充报告' in text:
+                    # 补充报告：IHC结果为最终诊断的一部分
+                    diagnosis = diagnosis + '\n免疫组化结果：\n' + ihc_diag
 
     # 策略3：兜底 — 提取"备注"或"Signed*-Report"之前的非元数据行
     if not diagnosis:
@@ -145,10 +150,10 @@ def parse_pathology(text: str) -> tuple[dict, str]:
                 else:
                     # 不确定 → 保持取材模式，继续跳过
                     continue
-            # 取材描述行（"部位"：...）vs 诊断行（"部位"直接诊断）
+            # 取材描述行（"部位"：...含测量词）vs 诊断行（"部位"：恶性肿瘤）
             if line.startswith(lq) or line.startswith('"') or line.startswith(lb):
                 m = re.match(f'[{lq}\\"{lb}]([^{rq}\\"{rb}]+)[{rq}\\"{rb}]\\s*[：:]', line)
-                if m:
+                if m and any(kw in line for kw in ['×', 'cm', '大小', '直径', '灰白', '灰红', '灰黄', '灰褐']):
                     in_specimen = True
                     continue
             if line and len(line) > 5:
