@@ -88,6 +88,33 @@ SQLite 数据库位于 `backend/lab2fhir.db`。`Report` 模型同时存储原始
 - 若需下探至 Chrome 85：降级 pdfjs-dist 至 `^3.11.174` + `vite.config.js` 加 `build.target: 'chrome85'`。
 - `browserslist` 定义在 `frontend/package.json`。
 
+## 部署
+
+生产服务器：Windows，项目目录 `D:\Lab2FHIR`，使用 nssm 管理服务。
+
+| 服务 | nssm 服务名 |
+|------|------------|
+| 后端 (uvicorn) | `Lab2FHIR-Backend` |
+| 前端 (nginx) | `Lab2FHIR-Nginx` |
+
+### 更新流程
+
+```batch
+:: 1. 停止后端
+nssm stop Lab2FHIR-Backend
+
+:: 2. 覆盖文件（从 deploy/ 文件夹）
+xcopy /E /Y deploy\backend D:\Lab2FHIR\backend\
+xcopy /E /Y deploy\frontend D:\Lab2FHIR\frontend\
+
+:: 3. 启动后端
+nssm start Lab2FHIR-Backend
+```
+
+- 仅更新源文件时无需重启 nginx（静态文件直接覆盖即生效）
+- 前端构建在开发机完成（`npm run build`），产物在 `deploy/frontend/dist/`
+- 详细步骤见 `deploy/更新步骤.txt`
+
 ## 重要注意事项
 
 **终端中文乱码**：Windows Git Bash 默认使用 GBK 编码，Python 打印中文时出现乱码。解决方案：在 Python 命令前加 `PYTHONIOENCODING=utf-8`，或在 shell 中设置 `export PYTHONIOENCODING=utf-8`。读取中文输出时，建议先写入 UTF-8 文件再使用 Read 工具查看。

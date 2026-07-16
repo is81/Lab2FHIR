@@ -1,0 +1,18 @@
+Lab2FHIR 更新步骤 (2026-07-16)
+=================================
+
+1. 停止服务
+   nssm stop Lab2FHIR-Backend
+
+2. 覆盖后端文件
+   xcopy /E /Y backend D:\Lab2FHIR\backend\
+
+3. 覆盖前端文件
+   xcopy /E /Y frontend D:\Lab2FHIR\frontend\
+
+4. 启动服务
+   nssm start Lab2FHIR-Backend
+
+5. 验证
+   浏览器打开 http://服务器IP
+   登录 pathology_staff → 报告列表 → 勾选删除测试
