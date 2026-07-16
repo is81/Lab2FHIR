@@ -59,8 +59,8 @@ def parse_pathology(text: str) -> tuple[dict, str]:
     if not diagnosis:
         diagnoses = []
         # 匹配 ASCII 直引号 "、"、Unicode 弯引号 “”、中文引号 「」
-        for pat in [r'[“\"]([^”\"]+)[”\"]\s*([^。\n]+。?)',
-                     r'「([^」]+)」\s*([^。\n]+。?)']:
+        for pat in [r'[“\"]([^”\"]+)[”\"]\s*([^“「\n]+)',
+                     r'「([^」]+)」\s*([^「\n]+)']:
             matches = re.findall(pat, text)
             for site, desc in matches:
                 # 过滤取材描述（含尺寸、颜色、切缘等测量描述的行）

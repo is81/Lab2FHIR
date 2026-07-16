@@ -30,8 +30,8 @@ def parse_gastric(text: str) -> tuple[dict, str]:
     diagnosis = ""
     # 匹配 "部位"诊断文本。 格式
     for pat in [
-        r'["“]([^"”]+)["”]\s*([^。\n]+。?)',
-        r'「([^」]+)」\s*([^。\n]+。?)',
+        r'[“”]([^””]+)[“”]\s*([^”「\n]+)',
+        r'「([^」]+)」\s*([^「\n]+)',
     ]:
         matches = re.findall(pat, text)
         if matches:

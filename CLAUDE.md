@@ -75,6 +75,19 @@ SQLite 数据库位于 `backend/lab2fhir.db`。`Report` 模型同时存储原始
 - `/reports/:id` — 三栏布局：解析结果 | PDF 原文 | FHIR JSON
 - `/patients/:name` — 患者报告时间线
 
+## 浏览器兼容性
+
+| 浏览器 | 最低版本 | 制约因素 |
+|--------|----------|----------|
+| Chrome | 92 | pdfjs-dist 4.x（`.at()` + 私有字段，`legacy/` 构建未消除） |
+| Firefox | 90 | 同上 |
+| Safari | 15.4 | 同上 |
+| Edge | 92 | 同 Chrome |
+
+- JS/CSS/Vue3/Element Plus 代码本身兼容 Chrome 85+，唯一硬约束是 pdfjs-dist 4.x。
+- 若需下探至 Chrome 85：降级 pdfjs-dist 至 `^3.11.174` + `vite.config.js` 加 `build.target: 'chrome85'`。
+- `browserslist` 定义在 `frontend/package.json`。
+
 ## 重要注意事项
 
 **终端中文乱码**：Windows Git Bash 默认使用 GBK 编码，Python 打印中文时出现乱码。解决方案：在 Python 命令前加 `PYTHONIOENCODING=utf-8`，或在 shell 中设置 `export PYTHONIOENCODING=utf-8`。读取中文输出时，建议先写入 UTF-8 文件再使用 Read 工具查看。
