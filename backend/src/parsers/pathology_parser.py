@@ -61,18 +61,6 @@ def parse_pathology(text: str) -> tuple[dict, str]:
         if parts:
             diagnosis = "\n".join(parts)
 
-    # 策略1b：IHC免疫组化补充报告 → 提取检测结果
-    if not diagnosis and data.get("免疫组化结果") or (
-        not diagnosis and "免疫组化" in text and "检测结果" in text):
-        # 提取 "检测结果：" 或 "免疫组化结果：" 之后到 "备注" 之前的内容
-        m = re.search(r'(?:检测|免疫组化)结果[：:]\s*\n?(.+?)(?=\n\s*(?:备注|Signed|诊断医师|注：))', text, re.DOTALL)
-        if m:
-            ihc_text = m.group(1).strip()
-            # 清理：每行一条 IHC 指标
-            lines = [l.strip() for l in ihc_text.split('\n') if l.strip() and len(l.strip()) > 5]
-            if lines:
-                diagnosis = '\n'.join(lines)
-
     # 策略2：短篇报告 → 提取带引号的部位诊断
     if not diagnosis:
         diagnoses = []
@@ -108,6 +96,16 @@ def parse_pathology(text: str) -> tuple[dict, str]:
         if diagnoses:
             diagnosis = "\n".join(diagnoses)
 
+    # 策略1b：IHC免疫组化补充报告 → 仅在无引号部位诊断时提取
+    if not diagnosis and "免疫组化" in text and (
+        data.get("免疫组化结果") or "检测结果" in text):
+        m = re.search(r'(?:检测|免疫组化)结果[：:]\s*\n?(.+?)(?=\n\s*(?:备注|Signed|诊断医师|注：))', text, re.DOTALL)
+        if m:
+            ihc_text = m.group(1).strip()
+            lines = [l.strip() for l in ihc_text.split('\n') if l.strip() and len(l.strip()) > 5]
+            if lines:
+                diagnosis = '\n'.join(lines)
+
     # 策略3：兜底 — 提取"备注"或"Signed*-Report"之前的非元数据行
     if not diagnosis:
         lines = text.split('\n')
@@ -124,17 +122,29 @@ def parse_pathology(text: str) -> tuple[dict, str]:
             if not capture:
                 continue
             if any(kw in line for kw in ['备注', 'Signed*-Report', '诊断医师', '审核医师', '接收时间']):
-                break
+                # 跨页报告：暂停捕获，等待下一页临床病史重新激活
+                capture = False
+                in_specimen = False
+                continue
             # 跳过取材描述行
             if any(kw in line for kw in ['送检为', '福尔马林', '包装外附', '术式:', '标本长度', '肿瘤距']):
                 in_specimen = True
                 continue
-            # 取材描述续行：以数字+cm/× 或颜色描述开头
+            # 取材描述续行处理
             if in_specimen:
-                if (line[0].isdigit() and ('cm' in line or '×' in line)) or \
-                   any(line.startswith(w) for w in ['灰白', '灰红', '灰黄', '灰褐', '涂', '切面', '全取']):
+                # 明确诊断开始的标记 → 退出取材模式
+                if re.match(r'（\d+）', line) or re.match(r'\(\d+\)', line):
+                    in_specimen = False
+                # 取材描述续行特征 → 继续跳过
+                elif (line[0].isdigit() and ('cm' in line or '×' in line)) or \
+                     any(line.startswith(w) for w in
+                         ['灰白', '灰红', '灰黄', '灰褐', '涂', '切面', '保留', '全取',
+                          '端开放', '直径', '大小', '内膜厚', '肌壁厚', '颈管长',
+                          '宽', '长', '触及', '×', '开见', '切开见', '伞']):
                     continue
-                in_specimen = False
+                else:
+                    # 不确定 → 保持取材模式，继续跳过
+                    continue
             # 取材描述行（"部位"：...）vs 诊断行（"部位"直接诊断）
             if line.startswith(lq) or line.startswith('"') or line.startswith(lb):
                 m = re.match(f'[{lq}\\"{lb}]([^{rq}\\"{rb}]+)[{rq}\\"{rb}]\\s*[：:]', line)
