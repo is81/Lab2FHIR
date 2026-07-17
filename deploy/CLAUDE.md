@@ -6,7 +6,7 @@
 
 Lab2FHIR 将非结构化的化验/病理 PDF 报告转换为 **HL7 FHIR R4** 格式。这是一个全栈应用，后端使用 **FastAPI**，前端使用 **Vue 3 + Element Plus**。目标用户是进行历史病历数字化的医院 IT 团队。
 
-全部 404 份 PDF 样本位于 `docs/pdf_test/`。它们都是文本型 PDF（非扫描件），无需 OCR —— pdfplumber 直接提取文本。
+`docs/pdf_test/` 含 6 份 PDF 示例。全部都是文本型 PDF（非扫描件），无需 OCR —— pdfplumber 直接提取文本。完整测试集（400+ PDF）未纳入仓库，部署后从生产环境获取。
 
 ## 启动命令
 

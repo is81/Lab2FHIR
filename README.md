@@ -24,14 +24,16 @@ Lab2FHIR automatically converts unstructured lab/pathology PDF reports into the 
 
 ## 支持的报告类型 / Supported Report Types
 
-| 类型 / Type | 说明 / Description | 识别特征 |
-|------|------|------|
-| 细胞学（妇科） | DNA 倍体 + TCT 液基细胞学 | "DNA定量"/"液基薄层" |
-| HPV检测 | 人乳头状瘤病毒基因分型 | "人乳头状瘤病毒" |
-| 细胞学（非妇科） | 穿刺/脱落细胞学检查 | "细胞学报告单" |
-| 胃镜病理 | 胃镜活检 + 评分表 | 慢性炎症+活动性+萎缩 |
-| 外科病理 | 手术标本病理诊断 | "病理诊断"+"报告单" |
-| IHC 补充报告 | 免疫组化补充检测 | "Signed*-Report"+"免疫组化" |
+| 类型 / Type | 说明 / Description | PDF 示例 |
+|------|------|:--:|
+| 细胞学（妇科） | DNA 倍体 + TCT 液基细胞学 | 2 |
+| HPV检测 | 人乳头状瘤病毒基因分型 | 1 |
+| 细胞学（非妇科） | 穿刺/脱落细胞学检查 | 1 |
+| 胃镜病理 | 胃镜活检 + 慢性胃炎评分表 | 1 |
+| 外科病理 | 手术标本病理诊断 + 冰冻石蜡 | 1 |
+| IHC 补充报告 | 免疫组化补充检测（R-series/B-series） | 0 |
+
+> `docs/pdf_test/` 含 6 份 PDF 示例，完整 400+ 测试集未纳入仓库。
 
 ## 快速开始 / Quick Start
 
