@@ -25,7 +25,7 @@ npm run dev
 npm run build
 ```
 
-API 文档自动生成于 `http://localhost:8000/docs`（Swagger）。
+API 文档自动生成于 `http://localhost:8000/docs`（Swagger），需 `LAB2FHIR_DOCS=1` 开启。
 
 ## 架构
 
@@ -124,5 +124,7 @@ nssm start Lab2FHIR-Backend
 **报告类型识别顺序很重要**：胃镜报告与普通病理诊断报告共享标题"病理诊断报告单"。文本识别必须先检查胃镜评分表特征（`慢性炎症` + `活动性` + `萎缩`），**再**回退到"病理诊断"匹配。参见 `extractors/base.py` 中的 `identify_report_type()`。
 
 **同一病理号、不同报告类型**：`F` 前缀病理号在同一患者的 DNA 和 TCT 报告之间共享。去重必须使用 `(pathology_id, report_type)` 作为复合键，不能仅用 pathology_id。
+
+**Swagger UI 默认关闭**：`/docs` 依赖外网 CDN 资源，断网环境页面空白。默认关闭，本地开发需设 `LAB2FHIR_DOCS=1`。
 
 **全部 PDF 为文本型**：pdfplumber 可处理全部 405 份样本。当前数据集中不存在扫描件/图片型 PDF，因此暂时不需要 PaddleOCR/Tesseract 集成。
