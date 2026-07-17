@@ -4,6 +4,7 @@ __pycache__/
 *.egg-info/
 dist/
 *.db
+*.log
 
 # Node
 node_modules/
@@ -28,3 +29,5 @@ docs/pdf_full_backup/
 # Playwright
 frontend/test-results/
 deploy/Lab2FHIR/
+# Build artifacts
+frontend/_build_output.txt
