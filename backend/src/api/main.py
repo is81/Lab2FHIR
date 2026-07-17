@@ -46,11 +46,17 @@ async def lifespan(app: FastAPI):
     yield
 
 
+# 生产环境无外网时 Swagger UI 无法加载 CDN 资源，页面空白
+_docs_kwargs = {}
+if _settings.ENV == "production":
+    _docs_kwargs = {"docs_url": None, "redoc_url": None}
+
 app = FastAPI(
     title="Lab2FHIR",
     description="化验单 PDF → FHIR R4 转换服务",
     version="1.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
+    **_docs_kwargs
 )
 
 app.add_middleware(
