@@ -46,10 +46,10 @@ async def lifespan(app: FastAPI):
     yield
 
 
-# 生产环境无外网时 Swagger UI 无法加载 CDN 资源，页面空白
-_docs_kwargs = {}
-if _settings.ENV == "production":
-    _docs_kwargs = {"docs_url": None, "redoc_url": None}
+# Swagger UI 依赖外网 CDN，断网环境页面空白 → 默认关闭
+# 本地开发需要时设环境变量 LAB2FHIR_DOCS=1
+_docs_enabled = os.getenv("LAB2FHIR_DOCS", "") == "1"
+_docs_kwargs = {} if _docs_enabled else {"docs_url": None, "redoc_url": None}
 
 app = FastAPI(
     title="Lab2FHIR",
