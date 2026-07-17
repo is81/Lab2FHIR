@@ -15,12 +15,12 @@ Lab2FHIR automatically converts unstructured lab/pathology PDF reports into the 
 
 ## 功能特性 / Features
 
-- **PDF 自动解析** — 提取患者信息、检测结果、诊断结论，支持 4 大类报告（常规病理含 3 子类）
-- **FHIR R4 输出** — 生成标准 DiagnosticReport + Observation Bundle，含 LOINC 编码
-- **角色权限** — JWT 认证，病理科（导入+删除）/ 医生（仅查看）双角色
-- **Web 操作界面** — 拖拽批量导入、全文搜索、PDF 原文对照查看、批量删除
-- **批量导入** — 并发导入（3 线程），进度条，去重检测
-- **轻量部署** — SQLite + FastAPI + Docker Compose，无需外部数据库
+- **PDF Parsing** — Extracts patient info, results, diagnosis from 4 report types (general pathology with 3 subtypes)
+- **FHIR R4 Output** — Generates DiagnosticReport + Observation Bundle with LOINC codes
+- **Role-Based Access** — JWT auth, dual roles: pathology staff (import + delete) / doctor (view only)
+- **Web UI** — Drag-and-drop import, full-text search, side-by-side PDF viewer, batch delete
+- **Batch Import** — 3 concurrent workers, progress bar, deduplication
+- **Lightweight** — SQLite + FastAPI, Docker Compose one-click deployment
 
 ## 支持的报告类型 / Supported Report Types
 
@@ -31,11 +31,9 @@ Lab2FHIR automatically converts unstructured lab/pathology PDF reports into the 
 | 细胞学（妇科） | DNA 倍体、TCT 液基细胞学 | "DNA定量"/"液基薄层" |
 | HPV检测 | 人乳头状瘤病毒基因分型 | "人乳头状瘤病毒" |
 | 细胞学（非妇科） | 穿刺/脱落细胞学检查 | "细胞学报告单" |
-| 常规病理 | 胃镜病理 · 外科病理（含冰冻石蜡）· IHC 补充 | 胃镜评分表 / "病理诊断"+"报告单" / Signed*-Report+免疫组化 |
+| 常规病理 / General Pathology | 胃镜 · 外科（含冰冻石蜡）· IHC 补充 | 胃镜评分表 / "病理诊断"+"报告单" / Signed*-Report+免疫组化 |
 
-> `docs/pdf_test/` 含 6 份 PDF 示例（每种类型 1~2 份）。完整 400+ 测试集未纳入仓库。
-
-> `docs/pdf_test/` 含 6 份 PDF 示例，完整 400+ 测试集未纳入仓库。
+> `docs/pdf_test/` contains 6 sample PDFs. The full 400+ test set is not included in the repository.
 
 ## 快速开始 / Quick Start
 
@@ -114,16 +112,16 @@ curl -X POST http://localhost:8000/api/convert \
 
 ## 技术栈 / Tech Stack
 
-| 层 | 技术 |
+| Layer | Tech |
 |------|------|
-| 后端框架 | FastAPI + Uvicorn |
-| PDF 提取 | pdfplumber |
-| 数据库 | SQLite + SQLAlchemy + FTS5 |
-| 前端框架 | Vue 3 + Element Plus |
-| PDF 渲染 | PDF.js |
-| 标准 | HL7 FHIR R4 + LOINC |
-| 认证 | JWT + bcrypt |
-| 测试 | pytest (66 tests) |
+| Backend | FastAPI + Uvicorn |
+| PDF Extraction | pdfplumber |
+| Database | SQLite + SQLAlchemy + FTS5 |
+| Frontend | Vue 3 + Element Plus |
+| PDF Rendering | PDF.js (pdfjs-dist 4.x) |
+| Standard | HL7 FHIR R4 + LOINC |
+| Auth | JWT + bcrypt |
+| Testing | pytest (66 tests) |
 
 ## 测试 / Tests
 
@@ -162,10 +160,8 @@ Lab2FHIR/
 │       ├── api/                  # Axios + JWT 拦截器
 │       └── utils/                # 共享工具函数
 ├── docs/
-│   ├── pdf_test/                 # PDF 测试样本
-│   ├── 项目计划.md
-│   ├── 代码审查报告.md
-│   └── 默认账户.md
+│   ├── pdf_test/                 # PDF 测试样本 / Sample PDFs
+│   └── 默认账户.md                # 账户管理 / Account setup
 ├── docker-compose.yml            # 一键部署
 ├── .env.example                  # 环境变量模板
 ├── LICENSE                       # MIT
