@@ -15,7 +15,7 @@ Lab2FHIR automatically converts unstructured lab/pathology PDF reports into the 
 
 ## 功能特性 / Features
 
-- **PDF 自动解析** — 提取患者信息、检测结果、诊断结论，支持 6 大类报告（含 IHC/冰冻石蜡）
+- **PDF 自动解析** — 提取患者信息、检测结果、诊断结论，支持 4 大类报告（常规病理含 3 子类）
 - **FHIR R4 输出** — 生成标准 DiagnosticReport + Observation Bundle，含 LOINC 编码
 - **角色权限** — JWT 认证，病理科（导入+删除）/ 医生（仅查看）双角色
 - **Web 操作界面** — 拖拽批量导入、全文搜索、PDF 原文对照查看、批量删除
@@ -24,14 +24,16 @@ Lab2FHIR automatically converts unstructured lab/pathology PDF reports into the 
 
 ## 支持的报告类型 / Supported Report Types
 
-| 类型 / Type | 说明 / Description | PDF 示例 |
-|------|------|:--:|
-| 细胞学（妇科） | DNA 倍体 + TCT 液基细胞学 | 2 |
-| HPV检测 | 人乳头状瘤病毒基因分型 | 1 |
-| 细胞学（非妇科） | 穿刺/脱落细胞学检查 | 1 |
-| 胃镜病理 | 胃镜活检 + 慢性胃炎评分表 | 1 |
-| 外科病理 | 手术标本病理诊断 + 冰冻石蜡 | 1 |
-| IHC 补充报告 | 免疫组化补充检测（R-series/B-series） | 0 |
+系统内部识别 4 种类型，其中"常规病理"通过内部解析器自动分流为 3 个子类：
+
+| 类型 / Type | 子类 / Subtypes | 识别方式 |
+|------|------|------|
+| 细胞学（妇科） | DNA 倍体、TCT 液基细胞学 | "DNA定量"/"液基薄层" |
+| HPV检测 | 人乳头状瘤病毒基因分型 | "人乳头状瘤病毒" |
+| 细胞学（非妇科） | 穿刺/脱落细胞学检查 | "细胞学报告单" |
+| 常规病理 | 胃镜病理 · 外科病理（含冰冻石蜡）· IHC 补充 | 胃镜评分表 / "病理诊断"+"报告单" / Signed*-Report+免疫组化 |
+
+> `docs/pdf_test/` 含 6 份 PDF 示例（每种类型 1~2 份）。完整 400+ 测试集未纳入仓库。
 
 > `docs/pdf_test/` 含 6 份 PDF 示例，完整 400+ 测试集未纳入仓库。
 
