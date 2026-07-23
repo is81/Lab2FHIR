@@ -121,6 +121,8 @@
         <span style="font-size:12px;color:#909399;font-weight:400;margin-left:auto">
           {{ report.pdf_filename }}
         </span>
+        <el-button text :icon="Printer" title="打印 PDF"
+          style="margin-left:8px;font-size:18px" @click.stop="printPdf" />
         <span class="panel-collapse-btn" @click="collapsed.mid = true" title="收起"><el-icon><Fold /></el-icon></span>
       </div>
       <div class="panel-body" style="padding:0;overflow:hidden">
@@ -168,6 +170,8 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getReport } from '../api/index.js'
+import { Printer } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 import { getReportTypeColor } from '../utils/report.js'
 import PdfViewer from '../components/PdfViewer.vue'
 
@@ -190,6 +194,13 @@ const pdfUrl = computed(() => {
   const pid = report.value.pathology_id || ''
   return `/api/reports/${report.value.id}/pdf?pid=${encodeURIComponent(pid)}&_t=${report.value.id}`
 })
+
+function printPdf() {
+  const win = window.open(pdfUrl.value + '&inline=1', '_blank')
+  if (!win) {
+    ElMessage.warning('请允许弹出窗口以打开 PDF 打印')
+  }
+}
 
 function kvToArray(obj) {
   if (!obj) return []
