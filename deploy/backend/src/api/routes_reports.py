@@ -128,30 +128,35 @@ def get_patient_reports(patient_name: str, db: Session = Depends(get_db)):
 def get_report_pdf(
     report_id: int,
     pid: str = Query(None),
+    inline: bool = Query(False),
     db: Session = Depends(get_db)
 ):
-    """返回报告的原始PDF文件"""
+    """返回报告的原始PDF文件。inline=1 时浏览器内联预览，否则触发下载。"""
     repo = ReportRepository(db)
     report = repo.get_report(report_id)
+    disposition = "inline" if inline else "attachment"
 
     if report:
         # 1) 优先返回上传存储的 PDF（pdf_path 记录实际存储位置）
         if report.pdf_path and os.path.isfile(report.pdf_path):
             filename = report.pdf_filename or os.path.basename(report.pdf_path)
-            return FileResponse(report.pdf_path, media_type="application/pdf", filename=filename)
+            return FileResponse(report.pdf_path, media_type="application/pdf",
+                              filename=filename, content_disposition_type=disposition)
 
     # 2) 按数据库记录的文件名在 pdf_test 目录匹配
     if report and report.pdf_filename:
         safe = _safe_pdf_path(report.pdf_filename)
         if safe:
-            return FileResponse(safe, media_type="application/pdf", filename=report.pdf_filename)
+            return FileResponse(safe, media_type="application/pdf",
+                              filename=report.pdf_filename, content_disposition_type=disposition)
 
     # 3) 按病理号在 pdf_test 目录查找
     pathology_id = pid or (report.pathology_id if report else None)
     if pathology_id:
         found = _find_pdf_by_pid(pathology_id)
         if found:
-            return FileResponse(found, media_type="application/pdf")
+            return FileResponse(found, media_type="application/pdf",
+                              content_disposition_type=disposition)
 
     raise HTTPException(status_code=404, detail="PDF文件未找到")
 
